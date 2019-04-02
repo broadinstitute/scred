@@ -63,20 +63,3 @@ class RedcapRequester:
     @version.setter
     def version(self, value):
         self._version = value
-
-
-    # Pattern 1: Methods attached to the class instance
-
-
-
-# ---------------------------------------------------
-
-# Pattern 2: Top-level functions taking project as argument
-# Update: These are all going to methods of Project, a higher-level
-# class that accesses RedcapRequester (or a config) and dtypes
-def get_redcap_version(project):
-    return project.send_post_request(content='version')
-
-
-def get_data_dictionary(project, fields = None):
-    return project.send_post_request(content='metadata')
