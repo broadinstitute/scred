@@ -30,7 +30,7 @@ dbconn.insert(sql_iterable)
 ## Writing error checks... Maybe add arg to neuromex.get_records()?
 # No, this whole thing should be left to the user. They pull the raw data through this
 # API and are on their own (or can use our other packages!) from there. The check should
-# operate on the synced data, not happen literally as it's downloaded
+# operate on the synced data, not happen as it's downloaded
 
 ## Writing a function to add a new language
 new_langs = {191: "Swahili", 192: "Senegalese"}
@@ -58,3 +58,8 @@ dbconn.update(
 
 # Yeah, I'll look again tomorrow but I think this is how add_field_response should
 # look for this package. That's the way that makes the most intuitive sense to me.
+
+## Changing an arbitrary attribute on some Instrument
+dd = neuromex.get_metadata()
+dd.loc[ dd['form_name'] == "name_of_instrument", "required_field" ] = "y"
+neuromex.upload_data_dict(newdd)
