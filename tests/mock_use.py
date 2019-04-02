@@ -18,6 +18,8 @@ neuromex = scred.Project.from_config()
 # to instantiate if either of those are passed as args
 neuromex = scred.Project() # I like this better
 
+# ---------------------------------------------------
+
 ## Say I'm running a sync...
 records = neuromex.get_records() # default is all
 dbconn = db.Connect(some_cfg)
@@ -27,10 +29,14 @@ sql_iterable = get_sql_magic(reshaped) # not sure how this is best done
 # deal with, not us
 dbconn.insert(sql_iterable)
 
+# ---------------------------------------------------
+
 ## Writing error checks... Maybe add arg to neuromex.get_records()?
 # No, this whole thing should be left to the user. They pull the raw data through this
 # API and are on their own (or can use our other packages!) from there. The check should
 # operate on the synced data, not happen as it's downloaded
+
+# ---------------------------------------------------
 
 ## Writing a function to add a new language
 new_langs = {191: "Swahili", 192: "Senegalese"}
@@ -56,8 +62,7 @@ dbconn.update(
 # k-v pairs you want to add. Any weird stuff that happens between REDCap and the
 # ultimate destination isn't on this package.
 
-# Yeah, I'll look again tomorrow but I think this is how add_field_response should
-# look for this package. That's the way that makes the most intuitive sense to me.
+# ---------------------------------------------------
 
 ## Changing an arbitrary attribute on some Instrument
 dd = neuromex.get_metadata()
