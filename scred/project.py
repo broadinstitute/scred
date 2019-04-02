@@ -5,8 +5,8 @@ Uses REDCap API and data types defined in other modules to create more complex
 classes.
 """
 
-import webapi
-import dtypes
+from . import webapi
+from . import dtypes
 
 class RedcapProject:
     def __init__(self, requester_or_config = None, *args, **kwargs):

@@ -14,9 +14,10 @@ sys.path.insert(
 
 # Bring in subpackages. Not sure why, but `import scred` here and
 # `from context import scred.dtypes` in test_*.py throws ModuleNotFound error
-import scred.dtypes as dtypes
-import scred.project as project
-## Have I tried from scred import * yet..?
+# import scred.dtypes as dtypes
+# import scred.project as project
+# `from scred import *` also no good 
+# from scred import *
 
 # ---------------------------------------------------
 

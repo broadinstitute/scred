@@ -1,6 +1,8 @@
-# dtypes.py
+"""
+dtypes.py
 
-# Defines classes whose instances represent various REDCap responses
+Defines classes whose instances represent various REDCap responses.
+"""
 
 import re
 from typing import Collection
@@ -13,13 +15,6 @@ import pandas as pd
 # Maybe set it somewhere in config so it can be overwritten for
 # a project? Default to None, and only check if not None?
 ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}")
-
-class DataDictionary:
-    pass
-
-
-class DataAccessGroup:
-    pass
 
 
 class Record(pd.DataFrame):
@@ -58,10 +53,54 @@ class RecordSet(pd.DataFrame):
         self._data = pd.DataFrame(index=idx)
 
 
+class DataDictionary(pd.DataFrame):
+    """ 
+    Represents a REDCap Metadata/Data Dictionary object for a given project.
+    At least to start, we are only creating these from JSON data returned by API.
+    So we work from a list of dicts.
 
-# breakthrough note: chained indexing problem is all about __getitem__.
-# so it's really about making sure assignment is directly calling __setitem__
-# on the object and never trusting what's returned to be a view or copy.
+    Columns: actual_name_in_returned_json
+        Variable / Field Name: field_name
+        Form Name: form_name
+        Section Header: section_header
+        Field Type: field_type
+        Field Label: field_label
+        Choices, Calculations, OR Slider Labels: select_choices_or_calculations
+        Field Note: field_note
+        Text Validation Type OR Show Slider Number: text_validation_type_or_show_slider_number
+        Text Validation Min: text_validation_min
+        Text Validation Max: text_validation_max
+        Identifier?: identifier
+        Branching Logic (Show field only if...): branching_logic
+        Required Field?: required_field
+        Custom Alignment: custom_alignment
+        Question Number (surveys only): question_number
+        Matrix Group Name: matrix_group_name
+        Matrix Ranking?: matrix_ranking
+        Field Annotation: field_annotation
+    """
+    def __init__(self, rawdata):
+        # Use JSON data to create DataFrame
+        super().__init__(rawdata)
+    
+    def add_response(self, field, response):
+        """
+        field can be a single field (str) or container of several (set, list, etc).
+        response is a map.
+        """
+        # Put new responses into right format
+        notdone = ""
+        for code, label in response.items():
+            notdone += f"{code}, {label} | "
+            # Remember that we only need first | if options already exist
+        # If only one field given, put it into a list
+        if isinstance(field, str):
+            field = [field]
+        for somefield in field:
+            choices = self.loc[ self['field_name']==field, 'select_choices_or_calculations' ]
+            # TODO: Finish implementing
+            # add new choices here
 
-# Implications for how I treat the .copy() method too. Probably don't need to
-# do that nearly as often as I am.
+
+class DataAccessGroup:
+    pass
