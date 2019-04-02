@@ -9,3 +9,6 @@ sys.path.insert(
 )
 
 import scred.project
+
+def test_anything():
+    print("Testing.")
