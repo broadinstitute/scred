@@ -12,15 +12,15 @@ Creates the request-sending class used to interact with a REDCap instance.
 
 import requests
 
-import config
-import dtypes
+from . import config
+from . import dtypes
 
 user_cfg = config.USER_CFG
 
 # ---------------------------------------------------
 
 class RedcapRequester:
-    def __init__(self, config.RedcapConfig: cfg = user_cfg):
+    def __init__(self, cfg: config.RedcapConfig = user_cfg):
         self.url = cfg['url']
         self._payloader = __class__._build_payloader(cfg)
         self._version = None
@@ -33,7 +33,7 @@ class RedcapRequester:
             payload = {
                 'token': cfg['token'],
                 'url': cfg['url'],
-                'default_format': cfg['default_format'],
+                'format': cfg['default_format'],
             }
             payload.update(kwargs)
             return payload
@@ -80,4 +80,3 @@ def get_redcap_version(project):
 
 def get_data_dictionary(project, fields = None):
     return project.send_post_request(content='metadata')
-
