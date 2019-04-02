@@ -22,18 +22,29 @@ class RedcapConfig(dict):
         return self['token'] == "~YourREDCapTokenGoesHere"
 
 
+def _load_config_from_file_fallback(filename: str = CONFIG_FILE_EXAMPLE):
+    """If config can't be loaded, explicitly check the directory this file is in.
+    """
+    fallbackdir = Path(__file__).parent.resolve() # absolute path
+    default_location = fallbackdir / filename
+    with open(default_location) as cfg_file:
+        return json.loads(cfg_file.read())
+
+
 def load_config_from_file(filename: str = CONFIG_FILE_EXAMPLE):
-    """Load a config from a file."""
+    """Load a config from a file.
+    """
     print(f"loading file '{filename}'...")
     try:
         # Load cfg data and get map of config instances 
         with open(filename) as cfg_file:
             file_content = json.loads(cfg_file.read())
-            return RedcapConfig(file_content)
     except FileNotFoundError as ex:
-        print(f"Caught FileNotFoundError: {ex}")
-        print("Make sure you set up your config file and have it in the correct folder.")
-
+        print(f"Caught FileNotFoundError: {ex}. "
+        "Make sure you set up your config file and have it in the correct folder.")
+        file_content = _load_config_from_file_fallback(filename)
+    return RedcapConfig(file_content)
+        
 
 TEST_CFG = load_config_from_file(CONFIG_FILE_EXAMPLE)
 USER_CFG = load_config_from_file(CONFIG_FILE)
