@@ -4,12 +4,6 @@ scred/webapi.py
 Creates the request-sending class used to interact with a REDCap instance.
 """
 
-# 3/27/19: Maybe have calls be methods in RedcapRequester, then merge this
-# with dtypes.py? Or have this be just for RedcapRequester (name goes back),
-# then put RedcapRequester in a separate module that pulls from both and 
-# can be kept separate from them? project.py
-# Sounds good right now, see how it looks in the morning. 
-
 import requests
 
 from . import config
