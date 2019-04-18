@@ -15,6 +15,7 @@ import pandas as pd
 # Maybe set it somewhere in config so it can be overwritten for
 # a project? Default to None, and only check if not None?
 ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}")
+# Could also make ID_TEMPLATE a class-level property of Record
 
 
 class Record(pd.DataFrame):
@@ -48,6 +49,7 @@ class RecordSet(pd.DataFrame):
         Use the record IDs to build an Index.
         """
         # will this work if r.index is also multi?
+        # look into .from_frame()
         idx = pd.MultiIndex([ (r.id, r.index) for r in records ])
         # Make data a property..?
         self._data = pd.DataFrame(index=idx)
