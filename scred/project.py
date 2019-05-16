@@ -7,27 +7,21 @@ classes.
 
 from . import webapi
 from . import dtypes
-"""
-https://docs.python.org/3/reference/import.html
-5.7 (5.7.1): Helps explain the need for `from . import _`:
 
-Depending on how __main__ is initialized, __main__.__spec__ gets set appropriately or to None.
-
-When Python is started with the -m option, __spec__ is set to the module spec of the corresponding module
-or package. __spec__ is also populated when the __main__ module is loaded as part of executing a directory,
-zipfile or other sys.path entry.
-
-Note that __main__.__spec__ is always None in the last case, even if the file could technically be imported
-directly as a module instead. Use the -m switch if valid module metadata is desired in __main__.
-"""
+# ---------------------------------------------------
 
 class RedcapProject:
-    def __init__(self, requester_or_config = None, *args, **kwargs):
+    def __init__(self, requester_or_config_or_token = None, *args, **kwargs):
         print("Creating instance of RedcapProject...")
-        if requester_or_config is None:
-            config.load_config_from_file_if_valid()
+        if requester_or_config is None: # default to config stored in project
+            config.load_config_from_file(config.USER_CFG)
         self._post_request = "placeholder"
         # Obviously this is placeholder but you get the point
+
+    @classmethod
+    def _init_from_token(cls, token):
+        self._token = token
+        self._url = DEFAULT_URL
     
     # Liking the "top line of docstring for source" thing
     def get_export_fieldnames(self, fields = None):
@@ -52,3 +46,30 @@ class RedcapProject:
         if fields:
             payload_kwargs.update(field=fields)
         return self._post_request(payload_kwargs)
+
+
+# Want this available as top-level, but would be nice to bind a reduced
+# version to the Project itself.
+def add_branching_logic(record_set, data_dict):
+    """
+    each record has the same fields.
+    those fields are the records' indexes.
+    a RecordSet can hold a "fields_in_records" property.
+    the DataDictionary has columns for field name and branching logic.
+    pull fields_in_records and merge with DataDict.logic to get df of
+        field_name, logic_statement.
+    for each record, call that branching logic on the record's data.
+    the altered records are used to fill in a new RecordSet, which we return.
+    """
+    """
+    ~~PSEUDO~~
+    recset = RecordSet()
+    dd = DataDictionary()
+    rfields = recset.fields
+    blogic = dd.blogic
+    for record in recset:
+        altered = backfillna(record.data, blogic)
+        recset[record] = altered
+    return recset
+    """
+
