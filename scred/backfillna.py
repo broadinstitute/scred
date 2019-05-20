@@ -26,15 +26,16 @@ cond_chain_with_parentheses <<= cond_chain | '(' + cond_chain + ')' # Inserted a
 logic = cond_chain_with_parentheses + pp.StringEnd() # The full grammar
 
 # ---------------------------------------------------
-# Set up parse actions. 
-# Value: convert to numeric. Condition: access values & check logic.
+# Set up parse actions.
+
+# Value: convert to numeric
 def list_to_ints(list_of_nums):
-    # It's ok that this casts to int--RC branching logic doesn't support floats.
+    # It's ok that this casts to int--RC branching logic doesn't support floats
     return [ int(k) for k in list_of_nums ]
 
 value.setParseAction(list_to_ints)
 
-
+# Condition: access values & check logic
 def check_condition(parsed):
     "Takes in parser result, looks up key(s), and returns bool result of statement."
     parsed = parsed[0] # Only has one result
@@ -79,6 +80,7 @@ class Parser:
     def use_key(self, list_with_key):
         "Access key's value in instance's data set."
         k = list_with_key[0]
+        # print(f"Using key: {k}")
         try:
             return self.val_from_key(k) 
         except KeyError:
@@ -93,7 +95,8 @@ class Parser:
         if data == None: 
             data = self.data
         try:
-            return data.loc[ data.VarName==key, "response" ].reset_index(drop=True)[0]
+            # print(f"Found response: {data.loc[ key, 'response' ]}")
+            return data.loc[ key, "response" ]
         # Thrown if data frame does not contain that key (IndexError because it
         # tries to take the 0th entry of an empty frame.)
         except IndexError:
@@ -103,8 +106,10 @@ class Parser:
         temp_df = self.data.copy() # Unsafe to alter original during loop
         # Fill new 'Met' col with bool result of Logic column
         for idx, row in self.data.iterrows():
+            # print(f"Parsing logic...\nINDEX: {idx}\nROW: {row}")
             try:
                 truth_value = fullparse(row["branching_logic"])
+                # print(f"Truth value: {truth_value}")
                 temp_df.loc[ idx, "LOGIC_MET" ] = truth_value
             except AttributeError: # Backup for if no logic to evaluate but caught by parser
                 temp_df.loc[ idx, "LOGIC_MET" ] = True 

@@ -2,6 +2,9 @@
 config.json
 */config.json
 
+# Not sure I'm allowed to release fake data yet, since it follows real layout
+tests/stored_*.json
+
 # VSCode stuff
 .vscode/
 

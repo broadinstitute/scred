@@ -17,14 +17,15 @@ from . import backfillna
 # TODO: Make this configurable, not everyone uses our ID scheme
 # Maybe set it somewhere in config so it can be overwritten for
 # a project? Default to None, and only check if not None?
-ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}")
-# Could also make ID_TEMPLATE a class-level property of Record
 
 
 class Record(pd.DataFrame):
     """
     Represents a single observation in a REDCap project.
     """
+    NACODE = -555 # "Not applicable" (branching logic not satisfied)
+    BADCODE = -444 # "Bad data" (unexplained blank field)
+    ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}") # ID must match this
     def __init__(self, id_key: str, data: dict = dict()):
         """
         REDCap API will present a list of dicts; each dict is one record. We create a
@@ -38,6 +39,8 @@ class Record(pd.DataFrame):
         )
         super().__init__(index=idx, data=responses)
         self._id = data[id_key]
+        self._nafilled = False # "Not Applicable"
+        self._bdfilled = False # "Bad Data (possible RA error)"
     
     @property
     def id(self):
@@ -46,14 +49,15 @@ class Record(pd.DataFrame):
     @id.setter
     def id(self, value):
         # Confirm the subject ID at least looks real
-        if not ID_TEMPLATE.match(value):
-            raise ValueError(f"Invalid ID: {value}")
+        if not Record.ID_TEMPLATE.match(value):
+            raise ValueError(f"Invalid ID format: {value}")
         self._id = value
 
     def require_column(self, col, default_value = ""):
+        # Could make this a decorator
         if col not in self.columns.array:
             self[col] = default_value
-        
+
 
     def add_branching_logic(self, datadict):
         self.require_column("branching_logic")
@@ -62,10 +66,11 @@ class Record(pd.DataFrame):
         for varname in self.index:
             # TODO: Switch to using exportFieldNames to avoid ____ from negatives.
             # OK for current uses but potentially problematic.
+            base_field = varname
             if "___" in varname:
-                varname = varname.split("___")[0]
+                base_field = varname.split("___")[0]
             try:
-                base_logic = datadict.loc[varname, "branching_logic"]
+                base_logic = datadict.loc[base_field, "branching_logic"]
                 self.loc[varname, "branching_logic"] = base_logic
             # Overflow variables like `{instrument}_complete`
             except KeyError:
@@ -73,18 +78,43 @@ class Record(pd.DataFrame):
                 self.loc[varname, "branching_logic"] = ""
 
 
-    def fill_na_values(self, datadict):
-        # Need a filled-in branching logic column
+    def _fill_na_values(self, datadict):
+        """
+        Using a pythonic `branching_logic` column, fill in Non-Applicable REDCap values. 
+        That is, if branching logic is NOT satisfied, we expect the field to be blank and 
+        assign the "valid missing: N/A" code.
+        """
+        if self._nafilled is True:
+            return
         if "branching_logic" not in self.columns.array:
-            self.add_branching_logic(datadict)
-        print(self)
+            raise AttributeError("No branching_logic column exists")
         parser = backfillna.Parser(self)
         parser.parse_all_logic()
-        print(parser.data)
-        # for each key, see if this instance satisfies that statement.
-        # logicset = datadict["branching_logic"]
-        # mdf = pd.merge(self.copy(), logicset, left_index=True, right_index=True)
-        # return mdf
+        namask = (parser.data["response"]=="") & (parser.data["LOGIC_MET"]==False)
+        parser.data.loc[namask, "response"] = Record.NACODE
+        # Transfer filled responses to this object and set attribute
+        self.loc[:, "response"] = parser.data.loc[:, "response"]
+        self._nafilled = True
+    
+
+    def _fill_bad_data(self):
+        """
+        Once N/A values are filled in, anything remaining is missing due to RA error or
+        something else problematic enough to flag.
+        """
+        if self._nafilled is False:
+            raise AttributeError("Cannot fill missing values until NA values are filled")
+        self.loc[ self["response"]=="", "response" ] = Record.BADCODE
+        self._bdfilled = True
+
+
+    def fill_missing(self, datadict):
+        """
+        Composite method to handle all logic conversion and backfilling.
+        """
+        self.add_branching_logic(datadict)
+        self._fill_na_values(datadict)
+        self._fill_bad_data()
 
 
 class RecordSet(pd.DataFrame):
@@ -126,7 +156,7 @@ class DataDictionary(pd.DataFrame):
         Matrix Ranking?: matrix_ranking
         Field Annotation: field_annotation
     """
-    def __init__(self, data):
+    def __init__(self, data, blogic_fmt="redcap"):
         # Use JSON data to create DataFrame, but store API response
         idx = pd.Index(
             [ d["field_name"] for d in data ],
@@ -134,7 +164,7 @@ class DataDictionary(pd.DataFrame):
         )
         super().__init__(data, index=idx)
         self.raw_response = data
-        self._blogic_fmt = "redcap"
+        self._blogic_fmt = blogic_fmt
     
     # ---------------------------------------------------
     # Properties, static methods, "private" functions
@@ -160,7 +190,7 @@ class DataDictionary(pd.DataFrame):
         if blogic not in bouncebacks:
             clean = blogic.replace("[", "").replace("]", "")
             clean = clean.replace("=", "==") # next lines fix >== and <==
-            clean = clean.replace(">==", ">=")
+            clean = clean.replace(">==", ">=") # TODO: use Will's masking trick
             clean = clean.replace("<==", "<=")
             clean = clean.replace("'", "")
             return clean
