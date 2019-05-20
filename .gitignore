@@ -1,15 +1,3 @@
-# Private credentials
-config.json
-*/config.json
-
-# Not sure I'm allowed to release fake data yet, since it follows real layout
-tests/stored_*.json
-*/stored_*
-stored_*
-
-# VSCode stuff
-.vscode/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -114,3 +102,14 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Private credentials
+config.json
+*/config.json
+
+# Not sure I'm allowed to release fake data yet, since it follows real layout
+stored_neurogap_practice_records.json
+stored_neurogap_practice_datadict.json
+
+# VSCode stuff
+.vscode/
