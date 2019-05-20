@@ -110,6 +110,7 @@ config.json
 # Not sure I'm allowed to release fake data yet, since it follows real layout
 stored_neurogap_practice_records.json
 stored_neurogap_practice_datadict.json
+tests/stored_*.json
 
 # VSCode stuff
 .vscode/
