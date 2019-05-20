@@ -4,6 +4,8 @@ config.json
 
 # Not sure I'm allowed to release fake data yet, since it follows real layout
 tests/stored_*.json
+*/stored_*
+stored_*
 
 # VSCode stuff
 .vscode/
