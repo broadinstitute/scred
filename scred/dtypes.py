@@ -115,6 +115,8 @@ class Record(pd.DataFrame):
         self.add_branching_logic(datadict)
         self._fill_na_values(datadict)
         self._fill_bad_data()
+        self["response_uncoerced"] = self["response"] # preserve text
+        self["response"] = pd.to_numeric(self["response"], errors="coerce")
 
 
 class RecordSet(pd.DataFrame):
