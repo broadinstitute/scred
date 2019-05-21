@@ -18,7 +18,6 @@ from . import backfillna
 # Maybe set it somewhere in config so it can be overwritten for
 # a project? Default to None, and only check if not None?
 
-
 class Record(pd.DataFrame):
     """
     Represents a single observation in a REDCap project.
