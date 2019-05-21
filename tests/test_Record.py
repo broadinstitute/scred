@@ -50,8 +50,29 @@ def test_record_backfill_na_values_with_practice_data():
     stored_record._fill_na_values(stored_datadict)
     assert stored_record.loc["organic_cause_other", "response"] == -555
     assert stored_record.loc["psychosis_primary", "response"] == ""
-    assert stored_record.loc["is_case", "response"] == '0' # TODO: this sucks
+    assert stored_record.loc["is_case", "response"] == '0' # Becomes num later
 
+
+def test_record_backfill_missing_values_with_practice_data():
+    stored_datadict, stored_record = _setup_stored_datadict_and_record()
+    stored_record.add_branching_logic(stored_datadict)
+    stored_record._fill_na_values(stored_datadict)
+    stored_record._fill_bad_data()
+    assert stored_record.loc["psychosis_primary", "response"] == -444
+
+
+def test_record_fill_bad_data_raises_error_if_not_nafilled():
+    stored_datadict, stored_record = _setup_stored_datadict_and_record()
+    stored_record.add_branching_logic(stored_datadict)
+    with pytest.raises(AttributeError):
+        stored_record._fill_bad_data()
+
+def test_record_fill_missing_converts_to_numeric():
+    stored_datadict, stored_record = _setup_stored_datadict_and_record()
+    stored_record.add_branching_logic(stored_datadict)
+    assert stored_record.loc["is_case", "response"] == '0'
+    stored_record.fill_missing(stored_datadict)
+    assert stored_record.loc["is_case", "response"] == 0
 
 # Testing class dtypes.RecordSet
 
