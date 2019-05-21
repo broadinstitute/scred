@@ -12,6 +12,7 @@ from pathlib import Path
 
 CONFIG_FILE_EXAMPLE = "config.json.example"
 CONFIG_FILE = "config.json"
+SOURCE_DIR = Path(__file__).parent.resolve()
 
 class RedcapConfig(dict):
     def __init__(self, input_: dict):
@@ -25,7 +26,7 @@ class RedcapConfig(dict):
 def _load_config_from_file_fallback(filename: str = CONFIG_FILE):
     """If config can't be loaded, explicitly check the directory this file is in.
     """
-    fallbackdir = Path(__file__).parent.resolve() # absolute path
+    fallbackdir = SOURCE_DIR # absolute path
     default_location = fallbackdir / filename
     with open(default_location) as cfg_file:
         return json.loads(cfg_file.read())
@@ -36,7 +37,7 @@ def load_config_from_file(filename: str = CONFIG_FILE):
     """
     print(f"loading file '{filename}'...")
     try:
-        with open(filename) as cfg_file:
+        with open(SOURCE_DIR / filename) as cfg_file:
             file_content = json.loads(cfg_file.read())
     except FileNotFoundError as ex:
         print(f"Caught FileNotFoundError: {ex}. Falling back to default option.",

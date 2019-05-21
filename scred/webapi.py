@@ -4,12 +4,6 @@ scred/webapi.py
 Creates the request-sending class used to interact with a REDCap instance.
 """
 
-# 3/27/19: Maybe have calls be methods in RedcapRequester, then merge this
-# with dtypes.py? Or have this be just for RedcapRequester (name goes back),
-# then put RedcapRequester in a separate module that pulls from both and 
-# can be kept separate from them? project.py
-# Sounds good right now, see how it looks in the morning. 
-
 import requests
 
 from . import config
@@ -40,9 +34,22 @@ class RedcapRequester:
         return payloader
 
 
-    def send_post_request(self, **kwargs):
+    def post(self, **kwargs):
         payload = self._payloader(**kwargs)
         response = requests.post(self.url, payload)
+        if not response.ok:
+            msg = (
+                "Couldn't complete request. Code "
+                f"{response.status_code}: {response.reason}."
+            )
+            raise requests.HTTPError(msg)
+        else:
+            return response
+
+
+    def get(self, **kwargs):
+        payload = self._payloader(**kwargs)
+        response = requests.get(self.url, payload)
         if not response.ok:
             msg = (
                 "Couldn't complete request. Code "
@@ -57,9 +64,11 @@ class RedcapRequester:
     def version(self):
         # Don't make this call unless we need to
         if self._version == None:
-            self.version = self.send_post_request(content='version')
+            self.version = self.post(content='version')
         return self._version
 
     @version.setter
     def version(self, value):
         self._version = value
+
+# ---------------------------------------------------

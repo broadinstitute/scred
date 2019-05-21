@@ -8,14 +8,22 @@ classes.
 from . import webapi
 from . import dtypes
 
+# ---------------------------------------------------
+
 class RedcapProject:
-    def __init__(self, requester_or_config = None, *args, **kwargs):
+    def __init__(self, requester_or_config_or_token = None, *args, **kwargs):
         print("Creating instance of RedcapProject...")
-        if requester_or_config is None:
-            config.load_config_from_file_if_valid()
+        if requester_or_config is None: # default to config stored in project
+            config.load_config_from_file(config.USER_CFG)
+        self._post_request = "placeholder"
         # Obviously this is placeholder but you get the point
+
+    @classmethod
+    def _init_from_token(cls, token):
+        self._token = token
+        self._url = DEFAULT_URL
     
-    # Liking the "top line of docstring if source" thing
+    # Liking the "top line of docstring for source" thing
     def get_export_fieldnames(self, fields = None):
         """ (From REDCap documentation)
         This method returns a list of the export/import-specific version of field names for all fields
@@ -37,4 +45,31 @@ class RedcapProject:
         payload_kwargs = {"content": "exportFieldNames"}
         if fields:
             payload_kwargs.update(field=fields)
-        return self.send_post_request(payload_kwargs)
+        return self._post_request(payload_kwargs)
+
+
+# Want this available as top-level, but would be nice to bind a reduced
+# version to the Project itself.
+def add_branching_logic(record_set, data_dict):
+    """
+    each record has the same fields.
+    those fields are the records' indexes.
+    a RecordSet can hold a "fields_in_records" property.
+    the DataDictionary has columns for field name and branching logic.
+    pull fields_in_records and merge with DataDict.logic to get df of
+        field_name, logic_statement.
+    for each record, call that branching logic on the record's data.
+    the altered records are used to fill in a new RecordSet, which we return.
+    """
+    """
+    ~~PSEUDO~~
+    recset = RecordSet()
+    dd = DataDictionary()
+    rfields = recset.fields
+    blogic = dd.blogic
+    for record in recset:
+        altered = backfillna(record.data, blogic)
+        recset[record] = altered
+    return recset
+    """
+
