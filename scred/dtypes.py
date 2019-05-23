@@ -14,17 +14,17 @@ from . import backfillna
 
 # ---------------------------------------------------
 
-# TODO: Make this configurable, not everyone uses our ID scheme
-# Maybe set it somewhere in config so it can be overwritten for
-# a project? Default to None, and only check if not None?
-
 class Record(pd.DataFrame):
     """
     Represents a single observation in a REDCap project.
     """
     NACODE = -555 # "Not applicable" (branching logic not satisfied)
     BADCODE = -444 # "Bad data" (unexplained blank field)
-    ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}") # ID must match this
+    # ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}") # ID must match this
+    ID_TEMPLATE = re.compile(r".*") # default: Everything is permitted
+    # TODO: Make this configurable, not everyone uses our ID scheme.
+    # Maybe set it somewhere in config so it can be overwritten for
+    # a project? Default to None, and only check if not None?
     def __init__(self, id_key: str, data: dict = dict()):
         """
         REDCap API will present a list of dicts; each dict is one record. We create a
@@ -51,6 +51,9 @@ class Record(pd.DataFrame):
         if not Record.ID_TEMPLATE.match(value):
             raise ValueError(f"Invalid ID format: {value}")
         self._id = value
+
+    def __str__(self):
+        return f"{self.__class__.__name__}: {self.id}"
 
     def require_column(self, col, default_value = ""):
         # Could make this a decorator
@@ -118,16 +121,45 @@ class Record(pd.DataFrame):
         self["response"] = pd.to_numeric(self["response"], errors="coerce")
 
 
-class RecordSet(pd.DataFrame):
-    def __init__(self, records: Collection[Record]):
+class RecordSet(dict):
+    # ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}") # Where should this live?
+    ID_TEMPLATE = re.compile(r".*") # default: Everything is permitted
+    def __init__(self, records: Collection[Record], id_key: str):
         """
-        Use the record IDs to build an Index.
+        Take a bulk record data response from the REDCap API and, for each record,
+        instantiate from Record. Use the `id_key` provided to the RecordSet to and
+        pass that to Record constructor. If the given records are already processed,
+        skip that step and directly append them.
         """
-        # will this work if r.index is also multi?
-        # look into .from_frame()
-        idx = pd.MultiIndex([ (r.id, r.index) for r in records ])
-        # Make data a property..?
-        self._data = pd.DataFrame(data=records, index=idx)
+        for record in iter(records):
+            instance = record
+            if not isinstance(record, Record):
+                instance = Record(id_key=id_key, data=record)
+            self[instance.id] = instance
+
+    def __setitem__(self, key, value):
+        if not Record.ID_TEMPLATE.match(key):
+            raise ValueError(f"ID did not match template: {key}")
+        super().__setitem__(key, value)
+
+
+    def fill_missing(self, datadict: "DataDictionary"):
+        """
+        Iterate over records contained in this set. Call fill_missing method on
+        each individual record; these are instances of scred.dtypes.Record, so we
+        know that method exists and expect it to function in isolation. The given
+        data dictionary, `datadict`, is used to look up branching logic.
+        """
+        for record in iter(self.values()):
+            record.fill_missing(datadict)
+            
+
+    def as_dataframe(self):
+        df = pd.DataFrame()
+        # TODO: Implement! Look into .from_frame()
+        # idx = pd.MultiIndex([ (r.id, r.index) for r in self.values() ])
+        # df = pd.DataFrame(data=self, index=idx)
+        return df
 
 # ===================================================
 
@@ -238,5 +270,3 @@ class DataAccessGroup:
     pass
 
 
-
-    

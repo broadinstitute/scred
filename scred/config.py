@@ -14,6 +14,11 @@ CONFIG_FILE_EXAMPLE = "config.json.example"
 CONFIG_FILE = "config.json"
 SOURCE_DIR = Path(__file__).parent.resolve()
 
+DEFAULT_SETTINGS = {
+    "url": "https://redcap.partners.org/redcap/api/",
+    "default_format": "json",
+}
+
 class RedcapConfig(dict):
     def __init__(self, input_: dict):
         for k, v in input_.items():

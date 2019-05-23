@@ -2,7 +2,9 @@
 
 import os
 import sys
+
 import pytest
+import pandas as pd
 
 sys.path.insert(
     0, os.path.abspath(
@@ -25,6 +27,15 @@ def _setup_stored_datadict_and_record():
     )
     return (stored_datadict, stored_record)
 
+def _setup_stored_datadict_and_recordset():
+    stored_datadict = DataDictionary(
+        testdata.get_stored_neurogap_datadictionary_response()
+    )
+    stored_recordset = RecordSet(
+        id_key="subjid",
+        records=testdata.get_stored_neurogap_record_response(),
+    )
+    return (stored_datadict, stored_recordset)
 # ---------------------------------------------------
 
 def test_create_Record_from_fake_data():
@@ -67,6 +78,7 @@ def test_record_fill_bad_data_raises_error_if_not_nafilled():
     with pytest.raises(AttributeError):
         stored_record._fill_bad_data()
 
+
 def test_record_fill_missing_converts_to_numeric():
     stored_datadict, stored_record = _setup_stored_datadict_and_record()
     stored_record.add_branching_logic(stored_datadict)
@@ -74,8 +86,29 @@ def test_record_fill_missing_converts_to_numeric():
     stored_record.fill_missing(stored_datadict)
     assert stored_record.loc["is_case", "response"] == 0
 
+# ===================================================
 # Testing class dtypes.RecordSet
 
 def test_create_empty_RecordSet_raises_TypeError():
     with pytest.raises(TypeError):
         RecordSet()
+
+def test_create_RecordSet_from_practice_data():
+    stored_recordset = RecordSet(
+        records=testdata.get_stored_neurogap_record_response(),
+        id_key="subjid",
+    )
+
+def test_RecordSet_fill_missing_with_practice_data():
+    stored_datadict, stored_recordset = _setup_stored_datadict_and_recordset()
+    stored_recordset.fill_missing(stored_datadict)
+    # TODO: Add assertions. Currently just proves it will run
+
+@pytest.mark.skip(reason="RecordSet.as_dataframe() not yet implemented")
+def test_RecordSet_as_dataframe_returns_DataFrame_with_MultiIndex():
+    _, stored_recordset = _setup_stored_datadict_and_recordset()
+    df = stored_recordset.as_dataframe()
+    assert isinstance(df.index, pd.MultiIndex)
+    # assert outer level is ID
+    # assert inner level is field_name
+    # assert specific record-field responses are as expected
