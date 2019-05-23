@@ -14,7 +14,7 @@ user_cfg = config.USER_CFG
 # ---------------------------------------------------
 
 class RedcapRequester:
-    def __init__(self, cfg: config.RedcapConfig = user_cfg):
+    def __init__(self, cfg: config.RedcapConfig = user_cfg, target_url = None):
         self.url = cfg['url']
         self._payloader = __class__._build_payloader(cfg)
         self._version = None
@@ -26,7 +26,6 @@ class RedcapRequester:
             """Constructs the payload for a request."""
             payload = {
                 'token': cfg['token'],
-                'url': cfg['url'],
                 'format': cfg['default_format'],
             }
             payload.update(kwargs)

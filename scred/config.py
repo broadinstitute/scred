@@ -45,7 +45,7 @@ def load_config_from_file(filename: str = CONFIG_FILE):
         with open(SOURCE_DIR / filename) as cfg_file:
             file_content = json.loads(cfg_file.read())
     except FileNotFoundError as ex:
-        print(f"Caught FileNotFoundError: {ex}. Falling back to default option.",
+        warnings.warn(f"Caught FileNotFoundError: {ex}. Falling back to default option.",
         "Make sure you set up your config file and have it in the correct folder.")
         file_content = _load_config_from_file_fallback(filename)
     return RedcapConfig(file_content)

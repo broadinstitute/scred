@@ -86,6 +86,6 @@ class RedcapProject:
         return self.requester.post(payload_kwargs)
     
     def post(self, **kwargs):
-        return self.requester.post()
+        return self.requester.post(**kwargs)
 
 
