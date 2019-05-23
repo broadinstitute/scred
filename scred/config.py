@@ -56,4 +56,6 @@ try:
     if USER_CFG.config_is_default():
         warnings.warn("DEV: Running default config. Cannot establish real connection.")
 except FileNotFoundError:
-    pass # won't be there if installed from pypi unless manually placed
+    # Won't be there if installed from pypi unless manually placed
+    TEST_CFG = None
+    USER_CFG = None
