@@ -25,8 +25,6 @@ def test_RedcapProject_init_with_config_object():
     rp = RedcapProject(TEST_CFG)
 
 def test_RedcapProject_init_with_token_str():
-    # faketoken = "ABCD9999DDDDXXZZ067JTP01Y44MSPD1"
-    faketoken = "48F35658A6AD741128CB8CE03A3774FC"
+    faketoken = "ABCD9999DDDDXXZZ067JTP01Y44MSPD1"
     rp = RedcapProject(faketoken)
-    response = rp.post(content="record").json()
-    print(response)
+    response = rp.post(content="record")
