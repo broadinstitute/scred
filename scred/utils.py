@@ -5,6 +5,15 @@ Various utilities we'll want at multiple points.
 """
 
 import logging
+from urllib.parse import urlparse
+
+# Found on StackOverflow, will fail some edge cases but generally useful
+def is_url(url):
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
 
 # Found this online and it's cool. Not used for anything yet
 class LogMixin(object):

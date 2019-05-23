@@ -50,9 +50,10 @@ def load_config_from_file(filename: str = CONFIG_FILE):
         file_content = _load_config_from_file_fallback(filename)
     return RedcapConfig(file_content)
         
-
-TEST_CFG = load_config_from_file(CONFIG_FILE_EXAMPLE)
-USER_CFG = load_config_from_file(CONFIG_FILE)
-
-if USER_CFG.config_is_default():
-    warnings.warn("DEV: Running default config. Cannot establish real connection.")
+try:
+    TEST_CFG = load_config_from_file(CONFIG_FILE_EXAMPLE)
+    USER_CFG = load_config_from_file(CONFIG_FILE)
+    if USER_CFG.config_is_default():
+        warnings.warn("DEV: Running default config. Cannot establish real connection.")
+except FileNotFoundError:
+    pass # won't be there if installed from pypi unless manually placed

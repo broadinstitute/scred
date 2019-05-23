@@ -8,3 +8,6 @@ print("DEV: Importing `scred` package")
 
 # Put all public-facing stuff here
 from .project import RedcapProject
+from .dtypes import Record, RecordSet, DataDictionary
+from .config import RedcapConfig
+from .webapi import RedcapRequester
