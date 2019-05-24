@@ -24,37 +24,44 @@ class RedcapConfig(dict):
         for k, v in input_.items():
             self[k] = v
 
-    def config_is_default(self):
-        return self['token'] == "~YourREDCapTokenGoesHere"
-
 
 def _load_config_from_file_fallback(filename: str = CONFIG_FILE):
     """If config can't be loaded, explicitly check the directory this file is in.
     """
     fallbackdir = SOURCE_DIR # absolute path
     default_location = fallbackdir / filename
-    with open(default_location) as cfg_file:
-        return json.loads(cfg_file.read())
+    try:
+        with open(default_location) as cfg_file:
+            return json.loads(cfg_file.read())
+    except FileNotFoundError:
+        warnings.warn("Could not find a valid config.json in package directory")
 
 
 def load_config_from_file(filename: str = CONFIG_FILE):
-    """Load a config from a file.
+    """Load a config from a file. Should contain:
+        url: requests will point to this for API calls
+        token: valid 32-character REDCap token
+        default_format: REDCap returns this unless other `format` given
     """
-    print(f"loading file '{filename}'...")
     try:
-        with open(SOURCE_DIR / filename) as cfg_file:
+        with open(filename) as cfg_file:
             file_content = json.loads(cfg_file.read())
     except FileNotFoundError as ex:
-        warnings.warn(f"Caught FileNotFoundError: {ex}. Falling back to default option. \
-        Make sure you set up your config file and have it in the correct folder.")
         file_content = _load_config_from_file_fallback(filename)
+        msg = (f"Caught FileNotFoundError: {filename}. Falling back to default option.",
+        "Make sure you set up your config file and have it in the correct folder.")
+        warnings.warn(msg)
     return RedcapConfig(file_content)
-        
+
+
+# ===================================================
+
+# Mostly just to make local tests work at this point. Consider tossing whole "config.json
+# in the scred package" thing and have users load from a file on their machine with
+# credentials before they init the Project.
 try:
     TEST_CFG = load_config_from_file(CONFIG_FILE_EXAMPLE)
     USER_CFG = load_config_from_file(CONFIG_FILE)
-    if USER_CFG.config_is_default():
-        warnings.warn("DEV: Running default config. Cannot establish real connection.")
 except FileNotFoundError:
     # Won't be there if installed from pypi unless manually placed
     TEST_CFG = None

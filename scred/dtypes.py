@@ -1,7 +1,7 @@
 """
 dtypes.py
 
-Defines classes whose instances represent various REDCap responses.
+Defines classes to represent various REDCap objects.
 """
 
 import re
@@ -16,21 +16,25 @@ from . import backfillna
 
 class Record(pd.DataFrame):
     """
-    Represents a single observation in a REDCap project.
+    Represents a single observation in a REDCap project. Raw data will be blank whether 
+    the question was skipped or not, so we fill in the Not Applicable (N/A) and True Missing 
+    (RA error, other issue) data separately. The process by which skipped fields are filled, 
+    then missing fields are filled afterwards, is tracked by properties .nafilled and .bdfilled
     """
     NACODE = -555 # "Not applicable" (branching logic not satisfied)
     BADCODE = -444 # "Bad data" (unexplained blank field)
     # ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}") # ID must match this
     ID_TEMPLATE = re.compile(r".*") # default: Everything is permitted
-    # TODO: Make this configurable, not everyone uses our ID scheme.
-    # Maybe set it somewhere in config so it can be overwritten for
-    # a project? Default to None, and only check if not None?
+    # TODO: Make template configurable, not everyone uses our ID scheme.
+    # Have a classmethod to call before initing? Then user can pass an RE if they want.
+    # Record.set_template(r"some_regex"); participant = Record(my_data)
     def __init__(self, id_key: str, data: dict = dict()):
         """
         REDCap API will present a list of dicts; each dict is one record. We create a
         record from a response dict and can handle bulk pulls with loops/RecordSet.
         """
-        idx = pd.Index(data.keys(), name="field_name")
+        redcap_fields = data.keys()
+        idx = pd.Index(redcap_fields, name="field_name")
         responses = pd.Series(
             index=idx,
             data=list(data.values()),
@@ -38,8 +42,8 @@ class Record(pd.DataFrame):
         )
         super().__init__(index=idx, data=responses)
         self._id = data[id_key]
-        self._nafilled = False # "Not Applicable"
-        self._bdfilled = False # "Bad Data (possible RA error)"
+        self.nafilled = False # "Not Applicable" filled in
+        self.bdfilled = False # "Bad Data (possible RA error)" filled in
     
     @property
     def id(self):
@@ -47,7 +51,7 @@ class Record(pd.DataFrame):
     
     @id.setter
     def id(self, value):
-        # Confirm the subject ID at least looks real
+        # Confirm the subject ID matches ID template
         if not Record.ID_TEMPLATE.match(value):
             raise ValueError(f"Invalid ID format: {value}")
         self._id = value
@@ -55,10 +59,13 @@ class Record(pd.DataFrame):
     def __str__(self):
         return f"{self.__class__.__name__}: {self.id}"
 
-    def require_column(self, col, default_value = ""):
-        # Could make this a decorator
-        if col not in self.columns.array:
-            self[col] = default_value
+    def require_column(self, col, default_value = "", flexible = True):
+        # TODO? Could make this a decorator. If I do, think I can put name of calling func in error
+        if col in self.columns.array:
+            return
+        if not flexible:
+            raise AttributeError(f"Cannot run <this function> without column {col}")
+        self[col] = default_value
 
 
     def add_branching_logic(self, datadict):
@@ -74,7 +81,7 @@ class Record(pd.DataFrame):
             try:
                 base_logic = datadict.loc[base_field, "branching_logic"]
                 self.loc[varname, "branching_logic"] = base_logic
-            # Overflow variables like `{instrument}_complete`
+            # Keep blank for overflow variables like `{instrument}_complete`
             except KeyError:
                 warnings.warn(f"Cannot find {varname} in record and/or datadict")
                 self.loc[varname, "branching_logic"] = ""
@@ -86,17 +93,16 @@ class Record(pd.DataFrame):
         That is, if branching logic is NOT satisfied, we expect the field to be blank and 
         assign the "valid missing: N/A" code.
         """
-        if self._nafilled is True:
+        if self.nafilled is True:
             return
-        if "branching_logic" not in self.columns.array:
-            raise AttributeError("No branching_logic column exists")
+        self.require_column("branching_logic", flexible=False)
         parser = backfillna.Parser(self)
         parser.parse_all_logic()
         namask = (parser.data["response"]=="") & (parser.data["LOGIC_MET"]==False)
         parser.data.loc[namask, "response"] = Record.NACODE
         # Transfer filled responses to this object and set attribute
         self.loc[:, "response"] = parser.data.loc[:, "response"]
-        self._nafilled = True
+        self.nafilled = True
     
 
     def _fill_bad_data(self):
@@ -104,10 +110,20 @@ class Record(pd.DataFrame):
         Once N/A values are filled in, anything remaining is missing due to RA error or
         something else problematic enough to flag.
         """
-        if self._nafilled is False:
+        if self.nafilled is False:
             raise AttributeError("Cannot fill missing values until NA values are filled")
         self.loc[ self["response"]=="", "response" ] = Record.BADCODE
-        self._bdfilled = True
+        self.bdfilled = True
+
+
+    def to_numeric(self):
+        """
+        Cast all elements of the 'response' column to numeric. If there is no valid
+        conversion, the field will become `np.nan`. A copy of the original response 
+        is kept in 'response_uncoerced' to preserve text.
+        """
+        self["response_uncoerced"] = self["response"]
+        self["response"] = pd.to_numeric(self["response"], errors="coerce")
 
 
     def fill_missing(self, datadict):
@@ -117,19 +133,23 @@ class Record(pd.DataFrame):
         self.add_branching_logic(datadict)
         self._fill_na_values(datadict)
         self._fill_bad_data()
-        self["response_uncoerced"] = self["response"] # preserve text
-        self["response"] = pd.to_numeric(self["response"], errors="coerce")
+        self.to_numeric()
 
 
 class RecordSet(dict):
+    """
+    Maps a record's ID to its object to simplify lookups.
+    """
     # ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}") # Where should this live?
     ID_TEMPLATE = re.compile(r".*") # default: Everything is permitted
+    # ID_TEMPLATE should probably be in Record. RecordSet should get a method to change
+    # Record's class property, maybe...? Not sure how to handle this yet.
     def __init__(self, records: Collection[Record], id_key: str):
         """
         Take a bulk record data response from the REDCap API and, for each record,
-        instantiate from Record. Use the `id_key` provided to the RecordSet to and
-        pass that to Record constructor. If the given records are already processed,
-        skip that step and directly append them.
+        instantiate a Record. Use the `id_key` provided to the RecordSet to pass that 
+        to the Record constructor. If the given records are already processed, skip that 
+        step and directly append them.
         """
         for record in iter(records):
             instance = record
@@ -190,7 +210,6 @@ class DataDictionary(pd.DataFrame):
         Field Annotation: field_annotation
     """
     def __init__(self, data, blogic_fmt="redcap"):
-        # Use JSON data to create DataFrame, but store API response
         idx = pd.Index(
             [ d["field_name"] for d in data ],
             name="field_name",
@@ -267,6 +286,7 @@ class DataDictionary(pd.DataFrame):
 # ===================================================
 
 class DataAccessGroup:
+    # TODO: Implement
     pass
 
 

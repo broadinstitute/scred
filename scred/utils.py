@@ -1,7 +1,7 @@
 """
 scred/utils.py
 
-Various utilities we'll want at multiple points.
+Various utilities.
 """
 
 import logging

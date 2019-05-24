@@ -2,15 +2,15 @@
 
 import os
 import sys
+
 import pytest
+import pandas as pd
 
 sys.path.insert(
     0, os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..')
     )
 )
-
-import pandas as pd
 
 from scred import RedcapProject
 from scred.config import TEST_CFG
@@ -27,4 +27,3 @@ def test_RedcapProject_init_with_config_object():
 def test_RedcapProject_init_with_token_str():
     faketoken = "ABCD9999DDDDXXZZ067JTP01Y44MSPD1"
     rp = RedcapProject(faketoken)
-    response = rp.post(content="record")

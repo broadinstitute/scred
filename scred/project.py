@@ -1,7 +1,7 @@
 """
 scred/project.py
 
-Uses REDCap API and data types defined in other modules to create more complex
+Uses REDCap interface and data types defined in other modules to create more complex
 classes.
 """
 
@@ -40,7 +40,7 @@ def _get_requester_dispatcher():
     }
 
 def _create_requester(construct_arg):
-    # Called when init'ing RedcapProject so arg type is flexible
+    # Called when init'ing RedcapProject to make arg type flexible
     if not construct_arg:
         return _requester_from_default()
     argclass = construct_arg.__class__
@@ -58,7 +58,6 @@ def _create_requester(construct_arg):
    
 class RedcapProject:
     def __init__(self, requester = None, *args, **kwargs):
-        print("Creating instance of RedcapProject...")
         self.requester = _create_requester(requester)
 
     # Liking the "top line of docstring for source" thing
