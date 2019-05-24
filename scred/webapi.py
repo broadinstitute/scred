@@ -7,7 +7,6 @@ Creates the request-sending class used to interact with a REDCap instance.
 import requests
 
 from . import config
-from . import dtypes
 
 user_cfg = config.USER_CFG
 
@@ -26,7 +25,6 @@ class RedcapRequester:
             """Constructs the payload for a request."""
             payload = {
                 'token': cfg['token'],
-                'url': cfg['url'],
                 'format': cfg['default_format'],
             }
             payload.update(kwargs)
@@ -59,11 +57,11 @@ class RedcapRequester:
         else:
             return response.json()
 
-    
+
     @property
     def version(self):
         # Don't make this call unless we need to
-        if self._version == None:
+        if self._version is None:
             self.version = self.post(content='version')
         return self._version
 

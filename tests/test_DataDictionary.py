@@ -33,7 +33,7 @@ def test_create_DataDictionary_from_test_data():
     dd = DataDictionary(ddraw)
 
 
-def test_access_DataDictionary_branching_logic_testdata():
+def test_access_DataDictionary_branching_logic_with_testdata():
     dd = _setup_testdata_DataDictionary()
     logic = dd["branching_logic"]
 

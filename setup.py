@@ -7,7 +7,7 @@ requirements = ["ipython>=6", "nbformat>=4", "nbconvert>=5", "requests>=2"]
 
 setup(
     name="scred",
-    version="0.0.1",
+    version="0.0.4",
     author="Mark Baker",
     author_email="mbaker@broadinstitute.org",
     description="Python implementation of REDCap API",

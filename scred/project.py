@@ -1,28 +1,70 @@
 """
 scred/project.py
 
-Uses REDCap API and data types defined in other modules to create more complex
+Uses REDCap interface and data types defined in other modules to create more complex
 classes.
 """
 
 from . import webapi
 from . import dtypes
+from .config import DEFAULT_SETTINGS, USER_CFG, RedcapConfig
 
 # ---------------------------------------------------
+# To construct requester based on class of `requester` arg in RedcapProject.
+# All of this might belong in webapi.py though...
 
+def _requester_from_config(cfg):
+    return webapi.RedcapRequester(cfg)
+
+def _requester_from_token(token):
+    # If given just a token, use default settings and build up a requester
+    if len(token) != 32:
+        raise ValueError(f"REDCap tokens should be 32 characters long. Got {len(token)}")
+    cfg = DEFAULT_SETTINGS
+    cfg.update({"token": token})
+    return webapi.RedcapRequester(RedcapConfig(cfg))
+
+def _requester_reflexive(requester):
+    # If already given a requester, just bounce back
+    return requester
+
+def _requester_from_default():
+    # Fall back to contents of `scred/config.json`
+    return webapi.RedcapRequester(USER_CFG)
+
+def _get_requester_dispatcher():
+    # Avoids polluting global namespace. Maps arg's class to function that takes it 
+    return {
+        RedcapConfig: _requester_from_config,
+        str: _requester_from_token,
+        webapi.RedcapRequester: _requester_reflexive,
+    }
+
+def _create_requester(construct_arg):
+    # Called when init'ing RedcapProject to make arg type flexible
+    if not construct_arg:
+        return _requester_from_default()
+    argclass = construct_arg.__class__
+    dispatcher = _get_requester_dispatcher()
+    try:
+        constructor = dispatcher[argclass]
+    except KeyError:
+        raise TypeError(
+            "Project must be built from token (str), config, or None, not "
+            f"{construct_arg}"
+        ) 
+    return constructor(construct_arg)
+
+# ---------------------------------------------------
+   
 class RedcapProject:
-    def __init__(self, requester_or_config_or_token = None, *args, **kwargs):
-        print("Creating instance of RedcapProject...")
-        if requester_or_config is None: # default to config stored in project
-            config.load_config_from_file(config.USER_CFG)
-        self._post_request = "placeholder"
-        # Obviously this is placeholder but you get the point
+    def __init__(self, requester = None, *args, **kwargs):
+        self.requester = _create_requester(requester)
+        # TODO: Make self.url modify self.requester.url
 
-    @classmethod
-    def _init_from_token(cls, token):
-        self._token = token
-        self._url = DEFAULT_URL
-    
+    def post(self, **kwargs):
+        return self.requester.post(**kwargs)
+
     # Liking the "top line of docstring for source" thing
     def get_export_fieldnames(self, fields = None):
         """ (From REDCap documentation)
@@ -45,31 +87,6 @@ class RedcapProject:
         payload_kwargs = {"content": "exportFieldNames"}
         if fields:
             payload_kwargs.update(field=fields)
-        return self._post_request(payload_kwargs)
-
-
-# Want this available as top-level, but would be nice to bind a reduced
-# version to the Project itself.
-def add_branching_logic(record_set, data_dict):
-    """
-    each record has the same fields.
-    those fields are the records' indexes.
-    a RecordSet can hold a "fields_in_records" property.
-    the DataDictionary has columns for field name and branching logic.
-    pull fields_in_records and merge with DataDict.logic to get df of
-        field_name, logic_statement.
-    for each record, call that branching logic on the record's data.
-    the altered records are used to fill in a new RecordSet, which we return.
-    """
-    """
-    ~~PSEUDO~~
-    recset = RecordSet()
-    dd = DataDictionary()
-    rfields = recset.fields
-    blogic = dd.blogic
-    for record in recset:
-        altered = backfillna(record.data, blogic)
-        recset[record] = altered
-    return recset
-    """
+        return self.post(payload_kwargs)
+    
 

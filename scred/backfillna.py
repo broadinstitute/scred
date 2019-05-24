@@ -1,12 +1,26 @@
-# backfillna.py
-# Contact: Mark Baker (e: mbaker@broad)
+"""
+scred/backfillna.py
 
-# Parses branching logic to fill in the "Not Applicable" values for REDCap.
-# Base REDCap functionality doesn't distinguish between values that are missing
-# because the question wasn't asked (N/A) and values that are missing due to staff
-# error or inability to collect the information (true missing).
-# This module uses each field's branching logic to determine whether the question
-# was asked--if the logic is satisfied by that record's other fields, it was.
+Given a scred.Record instance, parses REDCap branching logic (given in pythonic form) to determine whether 
+each field prompt was skipped for that record.
+
+There are two reasons values in raw REDCap data can be missing: first, because the question wasn't asked (N/A); 
+and second, because the field response is actually blank. REDCap doesn't currently provide a way to distinguish 
+between the two, but it is useful to know whether a blank value is expected for a variety of reasons. This module 
+uses each field's branching logic to determine whether each field's prompt was presented during collection--that 
+is, if a field's logic is satisfied by the record's other field responses. 
+
+To use this module, pass a pandas.DataFrame (or a subclass, e.g. scred.Record) into the Parser class constructor.
+This dataframe must contain at least these 2 columns:
+    'response': the response provided in REDCap for each field
+    'branching_logic': pythonic branching logic (see documentation)
+
+Calling parser.parse() will set the attribute parser.data to a copy of the initial DataFrame; but with a new column,
+'LOGIC_MET', that is only True if the branching logic was satisfied by the record data. This can be used to separate 
+the two types of missing values and is implemented in the Record class (scred/dtypes.py).
+"""
+
+import warnings
 
 import pyparsing as pp
 
@@ -35,22 +49,25 @@ def list_to_ints(list_of_nums):
 
 value.setParseAction(list_to_ints)
 
+
 # Condition: access values & check logic
 def check_condition(parsed):
     "Takes in parser result, looks up key(s), and returns bool result of statement."
     parsed = parsed[0] # Only has one result
     # Field names have been replaced with their responses by this point
-    humpty = " ".join([str(x) for x in parsed])
+    condition_pieces = " ".join(
+        [ str(x) for x in parsed ]
+    )
     try:
-        return eval(humpty)
+        return eval(condition_pieces)
     except (SyntaxError, NameError): 
-        return False # Handles NaN result from key
+        return False # Handles blank result from key
 
 cond.setParseAction(check_condition)
 
 
 def fullparse(expression):
-    """Takes in an expression and parses it using the full logic. This
+    """Takes in an expression and parses it using the full branching logic. This
     attempts to split the string into tokens, put the tokens back together
     in a string with responses instead of field names, and evaluate that string.
     """
@@ -74,43 +91,40 @@ class Parser:
         global key, operation, value, cond, joint, cond_chain, cond_chain_with_parentheses, logic
         self.data = data
         self.data["LOGIC_MET"] = "" # Add empty column for logic result
-        # Finish up parser by setting actions that refer to the class's instance.
+        # Complete parser setup by pointing action at this instance
         key.setParseAction(self.use_key)
         
     def use_key(self, list_with_key):
-        "Access key's value in instance's data set."
+        """Access a key's value in the instance data."""
         k = list_with_key[0]
-        # print(f"Using key: {k}")
         try:
             return self.val_from_key(k) 
         except KeyError:
-            print(f"WARNING: Caught KeyError in Parser.use_key() for {k}")
+            warnings.warn(f"WARNING: Caught KeyError in Parser.use_key() for {k}")
             return False
 
     def val_from_key(self, key, data=None):
-        """Helper function that takes a key, looks that key up in the instance record, then returns its value.
-        Pandas df always wants to return a Series when pulling values, so there's a messy statement requiring 
-        a reset of the index to (reliably) pull the 0th entry.
+        """
+        Helper function that takes a key, looks that key up in the instance record, then returns its value.
+        Not sure how this works with use_key and giving a list and all that, but it does. Should revisit.
         """
         if data == None: 
             data = self.data
         try:
-            # print(f"Found response: {data.loc[ key, 'response' ]}")
             return data.loc[ key, "response" ]
-        # Thrown if data frame does not contain that key (IndexError because it
-        # tries to take the 0th entry of an empty frame.)
+        # Thrown if dataframe does not contain key (IndexError because of 0th entry in `use_key`)
         except IndexError:
             return None
 
     def parse_all_logic(self):
+        """Fill 'LOGIC_MET' column for each field"""
         temp_df = self.data.copy() # Unsafe to alter original during loop
-        # Fill new 'Met' col with bool result of Logic column
         for idx, row in self.data.iterrows():
-            # print(f"Parsing logic...\nINDEX: {idx}\nROW: {row}")
             try:
                 truth_value = fullparse(row["branching_logic"])
-                # print(f"Truth value: {truth_value}")
                 temp_df.loc[ idx, "LOGIC_MET" ] = truth_value
-            except AttributeError: # Backup for if no logic to evaluate but caught by parser
+            # Thrown if "blank" but caught by parser anyway.
+            # TODO: Why does this happen..?
+            except AttributeError:
                 temp_df.loc[ idx, "LOGIC_MET" ] = True 
-        self.data = temp_df # Export result to attribute
+        self.data = temp_df
