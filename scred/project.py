@@ -17,6 +17,7 @@ def _requester_from_config(cfg):
     return webapi.RedcapRequester(cfg)
 
 def _requester_from_token(token):
+    # If given just a token, use default settings and build up a requester
     if len(token) != 32:
         raise ValueError(f"REDCap tokens should be 32 characters long. Got {len(token)}")
     cfg = DEFAULT_SETTINGS
@@ -32,7 +33,7 @@ def _requester_from_default():
     return webapi.RedcapRequester(USER_CFG)
 
 def _get_requester_dispatcher():
-    # Avoids polluting global namespace
+    # Avoids polluting global namespace. Maps arg's class to function that takes it 
     return {
         RedcapConfig: _requester_from_config,
         str: _requester_from_token,
@@ -49,7 +50,7 @@ def _create_requester(construct_arg):
         constructor = dispatcher[argclass]
     except KeyError:
         raise TypeError(
-            "Project must be built from token (str), config, or None, not",
+            "Project must be built from token (str), config, or None, not "
             f"{construct_arg}"
         ) 
     return constructor(construct_arg)
@@ -59,6 +60,10 @@ def _create_requester(construct_arg):
 class RedcapProject:
     def __init__(self, requester = None, *args, **kwargs):
         self.requester = _create_requester(requester)
+        # TODO: Make self.url modify self.requester.url
+
+    def post(self, **kwargs):
+        return self.requester.post(**kwargs)
 
     # Liking the "top line of docstring for source" thing
     def get_export_fieldnames(self, fields = None):
@@ -82,9 +87,6 @@ class RedcapProject:
         payload_kwargs = {"content": "exportFieldNames"}
         if fields:
             payload_kwargs.update(field=fields)
-        return self.requester.post(payload_kwargs)
+        return self.post(payload_kwargs)
     
-    def post(self, **kwargs):
-        return self.requester.post(**kwargs)
-
 

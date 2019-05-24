@@ -33,14 +33,14 @@ class Record(pd.DataFrame):
         REDCap API will present a list of dicts; each dict is one record. We create a
         record from a response dict and can handle bulk pulls with loops/RecordSet.
         """
-        redcap_fields = data.keys()
+        redcap_fields, responses = data.keys(), data.values()
         idx = pd.Index(redcap_fields, name="field_name")
-        responses = pd.Series(
+        response_series = pd.Series(
             index=idx,
-            data=list(data.values()),
+            data=list(responses),
             name="response",
         )
-        super().__init__(index=idx, data=responses)
+        super().__init__(index=idx, data=response_series)
         self._id = data[id_key]
         self.nafilled = False # "Not Applicable" filled in
         self.bdfilled = False # "Bad Data (possible RA error)" filled in
@@ -100,10 +100,10 @@ class Record(pd.DataFrame):
         parser.parse_all_logic()
         namask = (parser.data["response"]=="") & (parser.data["LOGIC_MET"]==False)
         parser.data.loc[namask, "response"] = Record.NACODE
-        # Transfer filled responses to this object and set attribute
+        # Transfer filled responses to this object and set tracking attribute
         self.loc[:, "response"] = parser.data.loc[:, "response"]
         self.nafilled = True
-    
+
 
     def _fill_bad_data(self):
         """
@@ -128,7 +128,8 @@ class Record(pd.DataFrame):
 
     def fill_missing(self, datadict):
         """
-        Composite method to handle all logic conversion and backfilling.
+        Composite method to handle all logic conversion and backfilling. Convenience
+        feature for users; recommended you use this when implementing.
         """
         self.add_branching_logic(datadict)
         self._fill_na_values(datadict)
@@ -138,7 +139,8 @@ class Record(pd.DataFrame):
 
 class RecordSet(dict):
     """
-    Maps a record's ID to its object to simplify lookups.
+    Maps a record's ID to its object to simplify lookups. Provides a convenient interface
+    for operating on multiple records together.
     """
     # ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}") # Where should this live?
     ID_TEMPLATE = re.compile(r".*") # default: Everything is permitted
@@ -147,9 +149,9 @@ class RecordSet(dict):
     def __init__(self, records: Collection[Record], id_key: str):
         """
         Take a bulk record data response from the REDCap API and, for each record,
-        instantiate a Record. Use the `id_key` provided to the RecordSet to pass that 
+        instantiate a Record. Use the `id_key` provided to the RecordSet and pass it 
         to the Record constructor. If the given records are already processed, skip that 
-        step and directly append them.
+        step and include them directly.
         """
         for record in iter(records):
             instance = record
@@ -210,6 +212,11 @@ class DataDictionary(pd.DataFrame):
         Field Annotation: field_annotation
     """
     def __init__(self, data, blogic_fmt="redcap"):
+        """
+        Index on field names with other metadata as columns. .blogic_fmt represents
+        the current branching logic format. When working from API response, this is
+        always going to start off as REDCap-formatted.
+        """
         idx = pd.Index(
             [ d["field_name"] for d in data ],
             name="field_name",
