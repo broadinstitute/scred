@@ -58,12 +58,26 @@ def _create_requester(construct_arg):
 # ---------------------------------------------------
    
 class RedcapProject:
-    def __init__(self, requester = None, *args, **kwargs):
-        self.requester = _create_requester(requester)
-        # TODO: Make self.url modify self.requester.url
+    def __init__(self, token = None, url = None, *args, **kwargs):
+        self.set_url(url)
+        if token:
+            self.use_token(token)
+
+
+    def use_token(self, token):
+        if not self.url:
+            raise AttributeError("You must point to a REDCap instance before using the token")
+        self.requester = _requester_from_token(token)
+        self.requester.url = self.url
+
+
+    def set_url(self, url):
+        self.url = url
+
 
     def post(self, **kwargs):
         return self.requester.post(**kwargs)
+
 
     # Liking the "top line of docstring for source" thing
     def get_export_fieldnames(self, fields = None):

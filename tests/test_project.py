@@ -18,12 +18,14 @@ from . import testdata
 
 # ---------------------------------------------------
 
-def test_RedcapProject_init_with_empty_args_uses_stored_user_cfg():
+def test_RedcapProject_init_with_empty_args_permitted():
     rp = RedcapProject()
 
-def test_RedcapProject_init_with_config_object():
-    rp = RedcapProject(TEST_CFG)
 
-def test_RedcapProject_init_with_token_str():
+def test_RedcapProject_init_with_token_and_url():
     faketoken = "ABCD9999DDDDXXZZ067JTP01Y44MSPD1"
-    rp = RedcapProject(faketoken)
+    fakeurl = "https://redcap.botulism.org/api/"
+    rp = RedcapProject(
+        token=faketoken,
+        url=fakeurl,
+    )
