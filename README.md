@@ -17,7 +17,7 @@ Not implemented yet:
 ```python
 import scred
 
-redcap_token = "mytoken" # store/load your securely! Just an example!
+redcap_token = "mytoken" # store/load your token securely! Just an example!
 redcap_url = "https://redcap.fake.example.com/api/"
 primary_idvar = "participant_id" # change to match your project
 
