@@ -13,7 +13,7 @@ sys.path.insert(
 )
 
 from scred import RedcapProject
-from scred.config import TEST_CFG
+# from scred.config import TEST_CFG
 from . import testdata
 
 # ---------------------------------------------------

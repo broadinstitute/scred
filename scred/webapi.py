@@ -8,12 +8,12 @@ import requests
 
 from . import config
 
-user_cfg = config.USER_CFG
+# user_cfg = config.USER_CFG
 
 # ---------------------------------------------------
 
 class RedcapRequester:
-    def __init__(self, cfg: config.RedcapConfig = user_cfg):
+    def __init__(self, cfg):#cfg: config.RedcapConfig = user_cfg):
         self.url = cfg['url']
         self._payloader = __class__._build_payloader(cfg)
         self._version = None

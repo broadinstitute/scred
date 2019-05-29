@@ -7,7 +7,7 @@ classes.
 
 from . import webapi
 from . import dtypes
-from .config import DEFAULT_SETTINGS, USER_CFG, RedcapConfig
+from .config import DEFAULT_SETTINGS, RedcapConfig#, USER_CFG
 
 # ---------------------------------------------------
 # To construct requester based on class of `requester` arg in RedcapProject.
@@ -28,9 +28,9 @@ def _requester_reflexive(requester):
     # If already given a requester, just bounce back
     return requester
 
-def _requester_from_default():
-    # Fall back to contents of `scred/config.json`
-    return webapi.RedcapRequester(USER_CFG)
+# def _requester_from_default():
+#     # Fall back to contents of `scred/config.json`
+#     return webapi.RedcapRequester(USER_CFG)
 
 def _get_requester_dispatcher():
     # Avoids polluting global namespace. Maps arg's class to function that takes it 
@@ -42,8 +42,8 @@ def _get_requester_dispatcher():
 
 def _create_requester(construct_arg):
     # Called when init'ing RedcapProject to make arg type flexible
-    if not construct_arg:
-        return _requester_from_default()
+    # if not construct_arg:
+    #     return _requester_from_default()
     argclass = construct_arg.__class__
     dispatcher = _get_requester_dispatcher()
     try:

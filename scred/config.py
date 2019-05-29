@@ -58,10 +58,10 @@ def load_config_from_file(filename: str = CONFIG_FILE):
 # Mostly just to make local tests work at this point. Consider tossing whole "config.json
 # in the scred package" thing and have users load from a file on their machine with
 # credentials before they init the Project.
-try:
-    TEST_CFG = load_config_from_file(CONFIG_FILE_EXAMPLE)
-    USER_CFG = load_config_from_file(CONFIG_FILE)
-except FileNotFoundError:
-    # Won't be there if installed from pypi unless manually placed
-    TEST_CFG = None
-    USER_CFG = None
+# try:
+#     TEST_CFG = load_config_from_file(CONFIG_FILE_EXAMPLE)
+#     USER_CFG = load_config_from_file(CONFIG_FILE)
+# except FileNotFoundError:
+#     # Won't be there if installed from pypi unless manually placed
+#     TEST_CFG = None
+#     USER_CFG = None
