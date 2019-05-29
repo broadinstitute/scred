@@ -16,6 +16,7 @@ import scred.config as config
 from . import testdata
 
 TEST_CFG = config.load_config_from_file(config.CONFIG_FILE_EXAMPLE)
+
 # ---------------------------------------------------
 
 def test_connection_opens():
