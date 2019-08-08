@@ -2,12 +2,13 @@
 scred/project.py
 
 Uses REDCap interface and data types defined in other modules to create more complex
-classes.
+classes. Can't go in `dtypes` module because it relies on the `webapi` module, which
+lives "above" `dtypes` in the hierarchy.
 """
 
 from . import webapi
 from . import dtypes
-from .config import DEFAULT_SETTINGS, RedcapConfig#, USER_CFG
+from .config import DEFAULT_SETTINGS, RedcapConfig
 
 # ---------------------------------------------------
 # To construct requester based on class of `requester` arg in RedcapProject.
@@ -15,6 +16,7 @@ from .config import DEFAULT_SETTINGS, RedcapConfig#, USER_CFG
 
 def _requester_from_config(cfg):
     return webapi.RedcapRequester(cfg)
+
 
 def _requester_from_token(token):
     # If given just a token, use default settings and build up a requester
@@ -24,13 +26,11 @@ def _requester_from_token(token):
     cfg.update({"token": token})
     return webapi.RedcapRequester(RedcapConfig(cfg))
 
+
 def _requester_reflexive(requester):
     # If already given a requester, just bounce back
     return requester
 
-# def _requester_from_default():
-#     # Fall back to contents of `scred/config.json`
-#     return webapi.RedcapRequester(USER_CFG)
 
 def _get_requester_dispatcher():
     # Avoids polluting global namespace. Maps arg's class to function that takes it 
@@ -40,10 +40,8 @@ def _get_requester_dispatcher():
         webapi.RedcapRequester: _requester_reflexive,
     }
 
+
 def _create_requester(construct_arg):
-    # Called when init'ing RedcapProject to make arg type flexible
-    # if not construct_arg:
-    #     return _requester_from_default()
     argclass = construct_arg.__class__
     dispatcher = _get_requester_dispatcher()
     try:
@@ -58,10 +56,30 @@ def _create_requester(construct_arg):
 # ---------------------------------------------------
    
 class RedcapProject:
+    """
+    Main class for top-level interaction.
+    """
     def __init__(self, token = None, url = None, *args, **kwargs):
         self.set_url(url)
+        self._metadata = None
         if token:
             self.use_token(token)
+
+
+    @property
+    def metadata(self):
+        """
+        Property that holds the metadata (Data Dictionary) for this project instance.
+        """
+        # TODO: Implement
+        return self._metadata
+    
+    @metadata.setter
+    def metadata(self, value):
+        if value is not None:
+            raise NotImplementedError
+        # TODO: Implement
+        self._metadata = value
 
 
     def use_token(self, token):
@@ -79,7 +97,6 @@ class RedcapProject:
         return self.requester.post(**kwargs)
 
 
-    # Liking the "top line of docstring for source" thing
     def get_export_fieldnames(self, fields = None):
         """ (From REDCap documentation)
         This method returns a list of the export/import-specific version of field names for all fields

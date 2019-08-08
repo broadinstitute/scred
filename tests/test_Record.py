@@ -22,7 +22,7 @@ def _setup_stored_datadict_and_record():
     # stored_record_response has all observations; take 0th so we can
     # work on an individual record instead of a recordset
     stored_record = Record(
-        id_key="subjid",
+        primary_key="subjid",
         data=testdata.get_stored_neurogap_record_response()[0],
     )
     return (stored_datadict, stored_record)
@@ -32,7 +32,7 @@ def _setup_stored_datadict_and_recordset():
         testdata.get_stored_neurogap_datadictionary_response()
     )
     stored_recordset = RecordSet(
-        id_key="subjid",
+        primary_key="subjid",
         records=testdata.get_stored_neurogap_record_response(),
     )
     return (stored_datadict, stored_recordset)
@@ -40,7 +40,7 @@ def _setup_stored_datadict_and_recordset():
 
 def test_create_Record_from_fake_data():
     record_data = testdata.get_fake_record_dict()
-    record = Record(id_key="idvar", data=record_data)
+    record = Record(primary_key="idvar", data=record_data)
     assert record.id == "ABC12345678"
     assert record.loc["Var1", "response"] == False
     assert record.loc["Var10", "response"] == 1
@@ -96,7 +96,7 @@ def test_create_empty_RecordSet_raises_TypeError():
 def test_create_RecordSet_from_practice_data():
     stored_recordset = RecordSet(
         records=testdata.get_stored_neurogap_record_response(),
-        id_key="subjid",
+        primary_key="subjid",
     )
 
 def test_RecordSet_fill_missing_with_practice_data():

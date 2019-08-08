@@ -28,7 +28,7 @@ class Record(pd.DataFrame):
     # TODO: Make template configurable, not everyone uses our ID scheme.
     # Have a classmethod to call before initing? Then user can pass an RE if they want.
     # Record.set_template(r"some_regex"); participant = Record(my_data)
-    def __init__(self, id_key: str, data: dict = dict()):
+    def __init__(self, primary_key: str, data: dict = dict()):
         """
         REDCap API will present a list of dicts; each dict is one record. We create a
         record from a response dict and can handle bulk pulls with loops/RecordSet.
@@ -41,7 +41,7 @@ class Record(pd.DataFrame):
             name="response",
         )
         super().__init__(index=idx, data=response_series)
-        self._id = data[id_key]
+        self._id = data[primary_key]
         self.nafilled = False # "Not Applicable" filled in
         self.bdfilled = False # "Bad Data (possible RA error)" filled in
     
@@ -83,8 +83,9 @@ class Record(pd.DataFrame):
                 self.loc[varname, "branching_logic"] = base_logic
             # Keep blank for overflow variables like `{instrument}_complete`
             except KeyError:
-                warnings.warn(f"Cannot find {varname} in record and/or datadict")
                 self.loc[varname, "branching_logic"] = ""
+                if not varname.endswith("_complete"): # not expected to exist in datadict
+                    warnings.warn(f"Cannot find {varname} in record and/or datadict")
 
 
     def _fill_na_values(self, datadict):
@@ -120,9 +121,9 @@ class Record(pd.DataFrame):
         """
         Cast all elements of the 'response' column to numeric. If there is no valid
         conversion, the field will become `np.nan`. A copy of the original response 
-        is kept in 'response_uncoerced' to preserve text.
+        is kept in 'raw_response' to preserve text.
         """
-        self["response_uncoerced"] = self["response"]
+        self["raw_response"] = self["response"]
         self["response"] = pd.to_numeric(self["response"], errors="coerce")
 
 
@@ -146,17 +147,17 @@ class RecordSet(dict):
     ID_TEMPLATE = re.compile(r".*") # default: Everything is permitted
     # ID_TEMPLATE should probably be in Record. RecordSet should get a method to change
     # Record's class property, maybe...? Not sure how to handle this yet.
-    def __init__(self, records: Collection[Record], id_key: str):
+    def __init__(self, records: Collection[Record], primary_key: str):
         """
         Take a bulk record data response from the REDCap API and, for each record,
-        instantiate a Record. Use the `id_key` provided to the RecordSet and pass it 
+        instantiate a Record. Use the `primary_key` provided to the RecordSet and pass it 
         to the Record constructor. If the given records are already processed, skip that 
         step and include them directly.
         """
         for record in iter(records):
             instance = record
             if not isinstance(record, Record):
-                instance = Record(id_key=id_key, data=record)
+                instance = Record(primary_key=primary_key, data=record)
             self[instance.id] = instance
 
     def __setitem__(self, key, value):
@@ -164,16 +165,17 @@ class RecordSet(dict):
             raise ValueError(f"ID did not match template: {key}")
         super().__setitem__(key, value)
 
+    # TODO: __iter__ should loop over values
 
-    def fill_missing(self, datadict: "DataDictionary"):
+    def fill_missing(self, metadata: "DataDictionary"):
         """
         Iterate over records contained in this set. Call fill_missing method on
         each individual record; these are instances of scred.dtypes.Record, so we
         know that method exists and expect it to function in isolation. The given
-        data dictionary, `datadict`, is used to look up branching logic.
+        data dictionary, `metadata`, is used to look up branching logic.
         """
         for record in iter(self.values()):
-            record.fill_missing(datadict)
+            record.fill_missing(metadata)
             
 
     def as_dataframe(self):
