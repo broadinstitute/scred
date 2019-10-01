@@ -1,6 +1,10 @@
 # Raw responses from REDCap API will come as a list of dicts. Make sure
 # the test data we create returns everything in the correct format.
 
+import json
+
+# ---------------------------------------------------
+
 def get_fake_record_dict():
     idx = ["idvar"] + [ f"Var{n}" for n in range(1, 11) ]
     responses = ["ABC12345678", False, 3, "sometimes", 16, 22.5, True, "", -10, "", 1]
@@ -26,14 +30,29 @@ def get_fake_datadict_response():
 
 def get_stored_neurogap_record_response():
     # The list of dicts we get from response.json()
-    import json
     with open("tests/stored_neurogap_practice_records.json", "r") as fp:
         raw = json.load(fp)
     return raw
 
 def get_stored_neurogap_datadictionary_response():
     # The list of dicts we get from response.json()
-    import json
     with open("tests/stored_neurogap_practice_datadict.json", "r") as fp:
         raw = json.load(fp)
     return raw
+
+def get_stored_neurogap_exportFieldNames_response():
+    # The list of dicts we get from response.json()
+    with open("tests/stored_neurogap_exportFieldNames.json", "r") as fp:
+        raw = json.load(fp)
+    return raw
+
+# ---------------------------------------------------
+
+class TestDataResponses:
+    def __init__(self):
+        self.resps = {
+            "record": get_stored_neurogap_record_response(),
+        }
+
+testresponses = TestDataResponses()
+# use like: recresp = testresponses.resps["record"]

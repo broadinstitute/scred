@@ -60,5 +60,5 @@ def test_make_redcap_pythonic_converts_syntax():
         "hypomania_psq3": "hypomania_psq2 == 0 and hypomania_psq1 == 1",
         "assist_other_specify_amt": "assist_other_specify_list___1 == 1 or assist_other_specify_list___2 == 1 or assist_other_specify_list___3 == 1",
     }
-    for field, expected in var_and_logic.items():    
+    for field, expected in var_and_logic.items():
         assert dd.loc[field, "branching_logic"] == expected

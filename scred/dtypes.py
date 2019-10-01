@@ -23,7 +23,6 @@ class Record(pd.DataFrame):
     """
     NACODE = -555 # "Not applicable" (branching logic not satisfied)
     BADCODE = -444 # "Bad data" (unexplained blank field)
-    # ID_TEMPLATE = re.compile(r"[A-Z]{3}[1-9][0-9]{7}") # ID must match this
     ID_TEMPLATE = re.compile(r".*") # default: Everything is permitted
     # TODO: Make template configurable, not everyone uses our ID scheme.
     # Have a classmethod to call before initing? Then user can pass an RE if they want.
@@ -67,17 +66,29 @@ class Record(pd.DataFrame):
             raise AttributeError(f"Cannot run <this function> without column {col}")
         self[col] = default_value
 
+    """
+    Currently have:
+        add_branching_logic: gets base field for checkboxes, copies directly for others. 
+            Starts by making logic pythonic in datadict. This is logic for ROOT variables.
+            Next, cycles through index (field_name):
+            * default to just the varname
+            * if ___ (checkbox export), infer varname [FIX HERE?]
+            * look up that varname in datadict, copy pythonic branching logic
+            * if varname not found, give empty logic [When does this happen?]
+
+    Do I want a new class called LogicFiller that operates on records? Seems like half of this class
+    is just logic-filling. Maybe mixin with Parser, even? Or LogicFiller has/makes a Parser?
+    """
 
     def add_branching_logic(self, datadict):
         self.require_column("branching_logic")
         if datadict.blogic_fmt == "redcap":
             datadict.make_logic_pythonic()
         for varname in self.index:
-            # TODO: Switch to using exportFieldNames to avoid ____ from negatives.
-            # OK for current uses but potentially problematic.
             base_field = varname
             if "___" in varname:
                 base_field = varname.split("___")[0]
+                assert datadict.loc[base_field, "field_type"] == "checkbox"
             try:
                 base_logic = datadict.loc[base_field, "branching_logic"]
                 self.loc[varname, "branching_logic"] = base_logic
@@ -117,16 +128,6 @@ class Record(pd.DataFrame):
         self.bdfilled = True
 
 
-    def to_numeric(self):
-        """
-        Cast all elements of the 'response' column to numeric. If there is no valid
-        conversion, the field will become `np.nan`. A copy of the original response 
-        is kept in 'raw_response' to preserve text.
-        """
-        self["raw_response"] = self["response"]
-        self["response"] = pd.to_numeric(self["response"], errors="coerce")
-
-
     def fill_missing(self, datadict):
         """
         Composite method to handle all logic conversion and backfilling. Convenience
@@ -135,7 +136,25 @@ class Record(pd.DataFrame):
         self.add_branching_logic(datadict)
         self._fill_na_values(datadict)
         self._fill_bad_data()
-        self.to_numeric()
+        # self.to_numeric()
+    
+
+    def rcvalue(self, fieldname):
+        """
+        Used to more easily access numeric data in the `response` column. Only needs a
+        field name; automatically gets response and attempts to make it numeric.
+        """
+        try:
+            value = self.loc[fieldname, "response"]
+        except KeyError as ex:
+            raise ValueError(f"Invalid field: {ex}")
+        converter = int
+        if isinstance(value, str) and "." in value:
+            converter = float
+        try:
+            return converter(value)
+        except TypeError:
+            return value
 
 
 class RecordSet(dict):
@@ -165,8 +184,6 @@ class RecordSet(dict):
             raise ValueError(f"ID did not match template: {key}")
         super().__setitem__(key, value)
 
-    # TODO: __iter__ should loop over values
-
     def fill_missing(self, metadata: "DataDictionary"):
         """
         Iterate over records contained in this set. Call fill_missing method on
@@ -174,10 +191,9 @@ class RecordSet(dict):
         know that method exists and expect it to function in isolation. The given
         data dictionary, `metadata`, is used to look up branching logic.
         """
-        for record in iter(self.values()):
+        for record in self.values():
             record.fill_missing(metadata)
             
-
     def as_dataframe(self):
         df = pd.DataFrame()
         # TODO: Implement! Look into .from_frame()
@@ -241,13 +257,18 @@ class DataDictionary(pd.DataFrame):
             raise ValueError(f"{value} is not available. Choose from {valid}")
         self._blogic_fmt = value
 
+    def convert_checkboxes_in_logic_to_exports(self, exportnames):
+        # from exportFieldNames, if d is a dict in the list:
+        as_redcap_syntax = f"{d['original_field_name']}({d['choice_value']})"
+        exportfield = d["export_field_name"]
+        #re.sub(as_redcap_syntax, exportfield) in all branching logic
+
     @staticmethod
-    def _convert_logic_syntax(metadata_row):
+    def _convert_logic_syntax(blogic):
         """
         Handles all non-checkbox fields' logic conversions.
         """
         bouncebacks = [None, ""]
-        blogic = metadata_row["branching_logic"]
         if blogic not in bouncebacks:
             clean = blogic.replace("[", "").replace("]", "")
             clean = clean.replace("=", "==") # next lines fix >== and <==
@@ -258,38 +279,35 @@ class DataDictionary(pd.DataFrame):
         return ""
 
     @staticmethod
-    def _convert_checkbox_export(cbseries):
+    def _convert_checkbox_names(blogic):
         """
         Checkbox forms are exported differently in logic than in data; fix by substitution. 
             DO change: 'nonpsych_meds_cat(999) == 1' becomes 'nonpsych_meds_cat___999 == 1'.
             DON'T change: '(nonpsych_meds == 1 or nonpsych_meds == -777)' stays as-is.
         """
-        if not isinstance(cbseries, pd.Series):
-            raise TypeError(f"Requires series, not {cbseries.__class__}")
-        return cbseries.replace(
-            to_replace=r"(?P<varprefix>\w+)\(-?(?P<numcode>\d+)\)", 
-            value=r"\g<varprefix>___\g<numcode>",  
-            regex=True,
-        )
+        pattern = re.compile(r"(?P<field>\w+)\((?P<negative>-?)(?P<choice>\d+)\)")
+        for match in re.findall(pattern, blogic): # TODO: possible to use re.sub?
+            # re.finditer might let me deal with multiple matches
+            original = f"{match[0]}({'-' if match[1] else ''}{match[2]})"
+            converted = f"{match[0]}___{'_' if match[1] else ''}{match[2]}"
+            blogic = blogic.replace(original, converted)
+        return blogic
 
     # ---------------------------------------------------
     # Core functionality
     def make_logic_pythonic(self):
         """
         Convert REDCap's logic syntax to be evaluable by Python.
-        TODO: Not good! Use exportFieldNames or whatever and do it differently.
         """
         if self.blogic_fmt == "python":
             return
         fieldlogic = dict()
-        # Converts all fields that are not checkbox exports
-        for adict in self.raw_response:
-            logic = self._convert_logic_syntax(adict)
-            varname = adict['field_name']
+        for fdict in self.raw_response:
+            logic = self._convert_logic_syntax(fdict["branching_logic"])
+            logic = self._convert_checkbox_names(logic)
+            varname = fdict['field_name']
             fieldlogic[varname] = logic
-        # Make that into a series, pass to checkbox converter, overwrite
-        all_but_checkboxes = pd.Series(fieldlogic)
-        self["branching_logic"] = self._convert_checkbox_export(all_but_checkboxes)
+        self["branching_logic"] = pd.Series(fieldlogic)
         self.blogic_fmt = "python"
 
 # ===================================================
@@ -297,5 +315,3 @@ class DataDictionary(pd.DataFrame):
 class DataAccessGroup:
     # TODO: Implement
     pass
-
-

@@ -117,7 +117,13 @@ class RedcapProject:
         """
         payload_kwargs = {"content": "exportFieldNames"}
         if fields:
-            payload_kwargs.update(field=fields)
+            payload_kwargs.update(field=",".join(fields))
         return self.post(payload_kwargs)
     
-
+    def get_records(self, records = None, fields = None, **kwargs):
+        payload = {"content": "record"}
+        if records is not None:
+            payload.update({"records": ",".join(records)})
+        if fields is not None:
+            payload.update({"fields": ",".join(fields)})
+        self.post(**payload, **kwargs)

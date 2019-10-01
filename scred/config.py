@@ -10,6 +10,7 @@ from pathlib import Path
 
 # ---------------------------------------------------
 
+# TODO: Get hardcoded files out of here and into tests only
 CONFIG_FILE_EXAMPLE = "config.json.example"
 CONFIG_FILE = "config.json"
 SOURCE_DIR = Path(__file__).parent.resolve()
@@ -51,17 +52,3 @@ def load_config_from_file(filename: str = CONFIG_FILE):
         msg = (f"Caught FileNotFoundError: {filename}")
         warnings.warn(msg)
     return RedcapConfig(file_content)
-
-
-# ===================================================
-
-# Mostly just to make local tests work at this point. Consider tossing whole "config.json
-# in the scred package" thing and have users load from a file on their machine with
-# credentials before they init the Project.
-# try:
-#     TEST_CFG = load_config_from_file(CONFIG_FILE_EXAMPLE)
-#     USER_CFG = load_config_from_file(CONFIG_FILE)
-# except FileNotFoundError:
-#     # Won't be there if installed from pypi unless manually placed
-#     TEST_CFG = None
-#     USER_CFG = None

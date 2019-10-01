@@ -36,6 +36,7 @@ def _setup_stored_datadict_and_recordset():
         records=testdata.get_stored_neurogap_record_response(),
     )
     return (stored_datadict, stored_recordset)
+
 # ---------------------------------------------------
 
 def test_create_Record_from_fake_data():
@@ -53,6 +54,13 @@ def test_record_transfers_logic_to_exported_checkbox_variables():
     stored_record.add_branching_logic(stored_datadict)
     # TODO: Add assertions
     # assert stored_record
+    reclogic = stored_record.loc[
+        "lec_new_q1___1", "branching_logic"
+    ]
+    baselogic = stored_datadict.loc[
+        "lec_new_q1", "branching_logic"
+    ]
+    assert reclogic == baselogic
 
 
 def test_record_backfill_na_values_with_practice_data():
@@ -61,7 +69,7 @@ def test_record_backfill_na_values_with_practice_data():
     stored_record._fill_na_values(stored_datadict)
     assert stored_record.loc["organic_cause_other", "response"] == -555
     assert stored_record.loc["psychosis_primary", "response"] == ""
-    assert stored_record.loc["is_case", "response"] == '0' # Becomes num later
+    assert stored_record.loc["is_case", "response"] == '0'
 
 
 def test_record_backfill_missing_values_with_practice_data():
@@ -84,7 +92,8 @@ def test_record_fill_missing_converts_to_numeric():
     stored_record.add_branching_logic(stored_datadict)
     assert stored_record.loc["is_case", "response"] == '0'
     stored_record.fill_missing(stored_datadict)
-    assert stored_record.loc["is_case", "response"] == 0
+    assert stored_record.rcvalue("is_case") == 0
+
 
 # ===================================================
 # Testing class dtypes.RecordSet
@@ -93,16 +102,19 @@ def test_create_empty_RecordSet_raises_TypeError():
     with pytest.raises(TypeError):
         RecordSet()
 
+        
 def test_create_RecordSet_from_practice_data():
     stored_recordset = RecordSet(
         records=testdata.get_stored_neurogap_record_response(),
         primary_key="subjid",
     )
 
+
 def test_RecordSet_fill_missing_with_practice_data():
     stored_datadict, stored_recordset = _setup_stored_datadict_and_recordset()
     stored_recordset.fill_missing(stored_datadict)
     # TODO: Add assertions. Currently just proves it will run
+
 
 @pytest.mark.skip(reason="RecordSet.as_dataframe() not yet implemented")
 def test_RecordSet_as_dataframe_returns_DataFrame_with_MultiIndex():
