@@ -31,25 +31,24 @@ def _setup_neurogap_practice_DataDictionary():
 def test_create_DataDictionary_from_test_data():
     ddraw = testdata.get_fake_datadict_response()
     dd = DataDictionary(ddraw)
-
+    testdata_cols = {"field_name", "form_name", "branching_logic", "required_field"}
+    assert set(dd.columns) == testdata_cols
 
 def test_access_DataDictionary_branching_logic_with_testdata():
     dd = _setup_testdata_DataDictionary()
     logic = dd["branching_logic"]
-
+    assert isinstance(logic, pd.Series)
 
 def test_DataDictionary_instance_is_subclass_of_pandas_DataFrame():
     import pandas as pd
     dd = _setup_testdata_DataDictionary()
     assert issubclass(dd.__class__, pd.DataFrame)
 
-
 def test_DataDictionary_has_field_name_as_index():
     dd = _setup_testdata_DataDictionary()
     assert dd.index.name == "field_name"
 
-
-def test_make_redcap_pythonic_converts_syntax():
+def test_make_logic_pythonic_converts_redcap_syntax():
     dd = _setup_neurogap_practice_DataDictionary()
     dd.make_logic_pythonic()
     var_and_logic = {

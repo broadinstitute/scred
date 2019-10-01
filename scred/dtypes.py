@@ -136,7 +136,6 @@ class Record(pd.DataFrame):
         self.add_branching_logic(datadict)
         self._fill_na_values(datadict)
         self._fill_bad_data()
-        # self.to_numeric()
     
 
     def rcvalue(self, fieldname):
@@ -173,7 +172,7 @@ class RecordSet(dict):
         to the Record constructor. If the given records are already processed, skip that 
         step and include them directly.
         """
-        for record in iter(records):
+        for record in records:
             instance = record
             if not isinstance(record, Record):
                 instance = Record(primary_key=primary_key, data=record)
@@ -247,7 +246,9 @@ class DataDictionary(pd.DataFrame):
     # Properties, static methods, "private" functions
     @property
     def blogic_fmt(self):
-        # Branching logic format
+        """
+        Branching logic format.
+        """
         return self._blogic_fmt
 
     @blogic_fmt.setter
@@ -257,14 +258,8 @@ class DataDictionary(pd.DataFrame):
             raise ValueError(f"{value} is not available. Choose from {valid}")
         self._blogic_fmt = value
 
-    def convert_checkboxes_in_logic_to_exports(self, exportnames):
-        # from exportFieldNames, if d is a dict in the list:
-        as_redcap_syntax = f"{d['original_field_name']}({d['choice_value']})"
-        exportfield = d["export_field_name"]
-        #re.sub(as_redcap_syntax, exportfield) in all branching logic
-
     @staticmethod
-    def _convert_logic_syntax(blogic):
+    def _convert_simple_logic_syntax(blogic):
         """
         Handles all non-checkbox fields' logic conversions.
         """
@@ -279,7 +274,7 @@ class DataDictionary(pd.DataFrame):
         return ""
 
     @staticmethod
-    def _convert_checkbox_names(blogic):
+    def convert_checkbox_name(blogic):
         """
         Checkbox forms are exported differently in logic than in data; fix by substitution. 
             DO change: 'nonpsych_meds_cat(999) == 1' becomes 'nonpsych_meds_cat___999 == 1'.
@@ -292,6 +287,7 @@ class DataDictionary(pd.DataFrame):
             converted = f"{match[0]}___{'_' if match[1] else ''}{match[2]}"
             blogic = blogic.replace(original, converted)
         return blogic
+    
 
     # ---------------------------------------------------
     # Core functionality
@@ -303,8 +299,8 @@ class DataDictionary(pd.DataFrame):
             return
         fieldlogic = dict()
         for fdict in self.raw_response:
-            logic = self._convert_logic_syntax(fdict["branching_logic"])
-            logic = self._convert_checkbox_names(logic)
+            logic = self._convert_simple_logic_syntax(fdict["branching_logic"])
+            logic = self.convert_checkbox_name(logic)
             varname = fdict['field_name']
             fieldlogic[varname] = logic
         self["branching_logic"] = pd.Series(fieldlogic)
