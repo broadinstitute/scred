@@ -56,3 +56,9 @@ class TestDataResponses:
 
 testresponses = TestDataResponses()
 # use like: recresp = testresponses.resps["record"]
+
+class MockProject:
+    def __init__(self):
+        self.metadata = None
+        self.url = None
+        self.token = None

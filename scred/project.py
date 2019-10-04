@@ -122,8 +122,9 @@ class RedcapProject:
     
     def get_records(self, records = None, fields = None, **kwargs):
         payload = {"content": "record"}
-        if records is not None:
+        if records:
             payload.update({"records": ",".join(records)})
-        if fields is not None:
+        if fields:
             payload.update({"fields": ",".join(fields)})
-        self.post(**payload, **kwargs)
+        return self.post(**payload, **kwargs).json()
+

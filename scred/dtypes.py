@@ -259,34 +259,35 @@ class DataDictionary(pd.DataFrame):
         self._blogic_fmt = value
 
     @staticmethod
-    def _convert_simple_logic_syntax(blogic):
+    def _logic_statement_to_python(blogic):
         """
-        Handles all non-checkbox fields' logic conversions.
+        Handles all REDCap fields' logic conversions, going from REDCap syntax to
+        python-interpretable code.
         """
         bouncebacks = [None, ""]
         if blogic not in bouncebacks:
             clean = blogic.replace("[", "").replace("]", "")
             clean = clean.replace("=", "==") # next lines fix >== and <==
-            clean = clean.replace(">==", ">=") # TODO: use Will's masking trick
+            clean = clean.replace(">==", ">=")
             clean = clean.replace("<==", "<=")
             clean = clean.replace("'", "")
+            clean = DataDictionary.convert_checkbox_names(clean)
             return clean
         return ""
 
     @staticmethod
-    def convert_checkbox_name(blogic):
+    def convert_checkbox_names(blogic):
         """
         Checkbox forms are exported differently in logic than in data; fix by substitution. 
             DO change: 'nonpsych_meds_cat(999) == 1' becomes 'nonpsych_meds_cat___999 == 1'.
             DON'T change: '(nonpsych_meds == 1 or nonpsych_meds == -777)' stays as-is.
         """
         pattern = re.compile(r"(?P<field>\w+)\((?P<negative>-?)(?P<choice>\d+)\)")
-        for match in re.findall(pattern, blogic): # TODO: possible to use re.sub?
-            # re.finditer might let me deal with multiple matches
-            original = f"{match[0]}({'-' if match[1] else ''}{match[2]})"
-            converted = f"{match[0]}___{'_' if match[1] else ''}{match[2]}"
-            blogic = blogic.replace(original, converted)
-        return blogic
+        return re.sub(
+            pattern, 
+            lambda m: f"{m['field']}___{'_' if m['negative'] else ''}{m['choice']}",
+            blogic,
+        )
     
 
     # ---------------------------------------------------
@@ -297,14 +298,16 @@ class DataDictionary(pd.DataFrame):
         """
         if self.blogic_fmt == "python":
             return
-        fieldlogic = dict()
+        fieldslogic = dict()
         for fdict in self.raw_response:
-            logic = self._convert_simple_logic_syntax(fdict["branching_logic"])
-            logic = self.convert_checkbox_name(logic)
+            rclogic = fdict["branching_logic"]
+            pylogic = self._logic_statement_to_python(rclogic)
             varname = fdict['field_name']
-            fieldlogic[varname] = logic
-        self["branching_logic"] = pd.Series(fieldlogic)
+            fieldslogic[varname] = pylogic
+        self["branching_logic"] = pd.Series(fieldslogic)
         self.blogic_fmt = "python"
+
+    # TODO? Maybe all the LogicConversion stuff should be its own class
 
 # ===================================================
 
