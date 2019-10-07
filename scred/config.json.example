@@ -1,5 +1,0 @@
-{
-    "token": "~YourREDCapTokenGoesHere",
-    "url": "https://redcap.partners.org/redcap/api/",
-    "default_format": "json"
-}

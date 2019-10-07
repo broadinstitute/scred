@@ -61,3 +61,9 @@ def test_make_logic_pythonic_converts_redcap_syntax():
     }
     for field, expected in var_and_logic.items():
         assert dd.loc[field, "branching_logic"] == expected
+
+def test_DataDictionary_copy():
+    dd = _setup_neurogap_practice_DataDictionary()
+    dd2 = dd.copy()
+    assert dd2 is not dd
+    assert all(dd == dd2)

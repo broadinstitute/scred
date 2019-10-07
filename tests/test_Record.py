@@ -52,8 +52,6 @@ def test_create_Record_from_fake_data():
 def test_record_transfers_logic_to_exported_checkbox_variables():
     stored_datadict, stored_record = _setup_stored_datadict_and_record()
     stored_record.add_branching_logic(stored_datadict)
-    # TODO: Add assertions
-    # assert stored_record
     reclogic = stored_record.loc[
         "lec_new_q1___1", "branching_logic"
     ]

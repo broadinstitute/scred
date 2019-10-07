@@ -5,6 +5,7 @@ Defines classes to represent various REDCap objects.
 """
 
 import re
+import json
 import warnings
 from typing import Collection
 
@@ -66,23 +67,16 @@ class Record(pd.DataFrame):
             raise AttributeError(f"Cannot run <this function> without column {col}")
         self[col] = default_value
 
-    """
-    Currently have:
-        add_branching_logic: gets base field for checkboxes, copies directly for others. 
-            Starts by making logic pythonic in datadict. This is logic for ROOT variables.
-            Next, cycles through index (field_name):
-            * default to just the varname
-            * if ___ (checkbox export), infer varname [FIX HERE?]
-            * look up that varname in datadict, copy pythonic branching logic
-            * if varname not found, give empty logic [When does this happen?]
-
-    Do I want a new class called LogicFiller that operates on records? Seems like half of this class
-    is just logic-filling. Maybe mixin with Parser, even? Or LogicFiller has/makes a Parser?
-    """
-
     def add_branching_logic(self, datadict):
+        """
+        Draws from metadata object to add branching logic to this record.
+        Do I want a new class called LogicFiller that operates on records? 
+        Seems like half of this class is just logic-filling. Maybe mixin with Parser? 
+        Or LogicFiller has/makes a Parser?
+        """
         self.require_column("branching_logic")
         if datadict.blogic_fmt == "redcap":
+            datadict = datadict.copy()
             datadict.make_logic_pythonic()
         for varname in self.index:
             base_field = varname
@@ -97,7 +91,6 @@ class Record(pd.DataFrame):
                 self.loc[varname, "branching_logic"] = ""
                 if not varname.endswith("_complete"): # not expected to exist in datadict
                     warnings.warn(f"Cannot find {varname} in record and/or datadict")
-
 
     def _fill_na_values(self, datadict):
         """
@@ -116,7 +109,6 @@ class Record(pd.DataFrame):
         self.loc[:, "response"] = parser.data.loc[:, "response"]
         self.nafilled = True
 
-
     def _fill_bad_data(self):
         """
         Once N/A values are filled in, anything remaining is missing due to RA error or
@@ -127,7 +119,6 @@ class Record(pd.DataFrame):
         self.loc[ self["response"]=="", "response" ] = Record.BADCODE
         self.bdfilled = True
 
-
     def fill_missing(self, datadict):
         """
         Composite method to handle all logic conversion and backfilling. Convenience
@@ -137,7 +128,6 @@ class Record(pd.DataFrame):
         self._fill_na_values(datadict)
         self._fill_bad_data()
     
-
     def rcvalue(self, fieldname):
         """
         Used to more easily access numeric data in the `response` column. Only needs a
@@ -234,16 +224,17 @@ class DataDictionary(pd.DataFrame):
         the current branching logic format. When working from API response, this is
         always going to start off as REDCap-formatted.
         """
-        idx = pd.Index(
-            [ d["field_name"] for d in data ],
-            name="field_name",
-        )
-        super().__init__(data, index=idx)
-        self.raw_response = data
+        if isinstance(data, pd.DataFrame):
+            super().__init__(data)
+        else:
+            idx = pd.Index(
+                [ d["field_name"] for d in data ],
+                name="field_name",
+            )
+            super().__init__(data, index=idx)
+        # self.raw_response = data
         self._blogic_fmt = blogic_fmt
     
-    # ---------------------------------------------------
-    # Properties, static methods, "private" functions
     @property
     def blogic_fmt(self):
         """
@@ -265,15 +256,15 @@ class DataDictionary(pd.DataFrame):
         python-interpretable code.
         """
         bouncebacks = [None, ""]
-        if blogic not in bouncebacks:
-            clean = blogic.replace("[", "").replace("]", "")
-            clean = clean.replace("=", "==") # next lines fix >== and <==
-            clean = clean.replace(">==", ">=")
-            clean = clean.replace("<==", "<=")
-            clean = clean.replace("'", "")
-            clean = DataDictionary.convert_checkbox_names(clean)
-            return clean
-        return ""
+        if blogic in bouncebacks:
+            return ""
+        clean = blogic.replace("[", "").replace("]", "")
+        clean = clean.replace("=", "==") # next lines fix >== and <==
+        clean = clean.replace(">==", ">=")
+        clean = clean.replace("<==", "<=")
+        clean = clean.replace("'", "")
+        clean = DataDictionary.convert_checkbox_names(clean)
+        return clean
 
     @staticmethod
     def convert_checkbox_names(blogic):
@@ -289,9 +280,6 @@ class DataDictionary(pd.DataFrame):
             blogic,
         )
     
-
-    # ---------------------------------------------------
-    # Core functionality
     def make_logic_pythonic(self):
         """
         Convert REDCap's logic syntax to be evaluable by Python.
@@ -299,7 +287,7 @@ class DataDictionary(pd.DataFrame):
         if self.blogic_fmt == "python":
             return
         fieldslogic = dict()
-        for fdict in self.raw_response:
+        for fdict in json.loads(self.to_json(orient="records")):
             rclogic = fdict["branching_logic"]
             pylogic = self._logic_statement_to_python(rclogic)
             varname = fdict['field_name']
@@ -307,7 +295,9 @@ class DataDictionary(pd.DataFrame):
         self["branching_logic"] = pd.Series(fieldslogic)
         self.blogic_fmt = "python"
 
-    # TODO? Maybe all the LogicConversion stuff should be its own class
+    def copy(self):
+        dfcopy = super().copy()
+        return __class__(dfcopy, blogic_fmt=self.blogic_fmt)
 
 # ===================================================
 

@@ -6,32 +6,30 @@ Creates the request-sending class used to interact with a REDCap instance.
 
 import requests
 
-from . import config
-
-# ---------------------------------------------------
 
 class RedcapRequester:
-    def __init__(self, cfg):
-        self.url = cfg['url']
-        self._payloader = __class__._build_payloader(cfg)
-        self._version = None
-
+    def __init__(self, url, token, default_format = "json"):
+        self._url = url
+        self.payloader = self._build_payloader(token, default_format)
 
     @staticmethod
-    def _build_payloader(cfg):
+    def _build_payloader(token, default_format):
         def payloader(**kwargs):
             """Constructs the payload for a request."""
             payload = {
-                'token': cfg['token'],
-                'format': cfg['default_format'],
+                "token": token,
+                "format": default_format,
             }
             payload.update(kwargs)
             return payload
         return payloader
 
+    @property
+    def url(self):
+        return self._url
 
     def post(self, **kwargs):
-        payload = self._payloader(**kwargs)
+        payload = self.payloader(**kwargs)
         response = requests.post(self.url, payload)
         if not response.ok:
             msg = (
@@ -42,29 +40,5 @@ class RedcapRequester:
         else:
             return response
 
-
-    def get(self, **kwargs):
-        payload = self._payloader(**kwargs)
-        response = requests.get(self.url, payload)
-        if not response.ok:
-            msg = (
-                "Couldn't complete request. Code "
-                f"{response.status_code}: {response.reason}."
-            )
-            raise requests.HTTPError(msg)
-        else:
-            return response.json()
-
-
-    @property
-    def version(self):
-        # Don't make this call unless we need to
-        if self._version is None:
-            self.version = self.post(content='version')
-        return self._version
-
-    @version.setter
-    def version(self, value):
-        self._version = value
-
-# ---------------------------------------------------
+    def get_version(self):
+        return self.post(content="version")

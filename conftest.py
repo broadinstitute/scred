@@ -4,6 +4,7 @@ conftest.py
 Shares objects used by pytest.
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -18,8 +19,20 @@ def mock_records_json():
 
 @pytest.fixture
 def mock_records_response(mock_records_json):
-    import requests
     r = requests.Response()
     r.ok = True
     r.json = lambda x: mock_records_json
     return r
+
+@pytest.fixture(scope="session")
+def mock_config():
+    json_str = Path("scred/config.json.example").read_text()
+    return json.loads(json_str)
+
+@pytest.fixture(scope="session")
+def mock_token(mock_config):
+    return mock_config["token"]
+
+@pytest.fixture(scope="session")
+def mock_url(mock_config):
+    return mock_config["url"]
