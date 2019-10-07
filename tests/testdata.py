@@ -3,6 +3,8 @@
 
 import json
 
+import pytest
+
 # ---------------------------------------------------
 
 def get_fake_record_dict():

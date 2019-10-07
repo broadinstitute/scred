@@ -2,6 +2,8 @@
 
 import os
 import sys
+from pathlib import Path
+
 import pytest
 
 sys.path.insert(
@@ -11,15 +13,10 @@ sys.path.insert(
 )
 
 import scred.textract as txr
-from testdata import MockProject
-
-def _mock_request():
-    pass # TODO: Mock `requests` response
+from .testdata import MockProject
 
 # ---------------------------------------------------
 
 def test_create_textractor_with_mock_project():
     mock_project = MockProject()
-
-def test_placeholder():
-    pass
+    t = txr.Textractor(mock_project, "subjid")
