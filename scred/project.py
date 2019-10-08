@@ -31,7 +31,7 @@ class RedcapProject:
         Property that holds the metadata (Data Dictionary) for this project instance.
         """
         if self._metadata is None:
-            self._metadata = dtypes.DataDictionary(self.post(content="metadata"))
+            self._metadata = dtypes.DataDictionary(self.post(content="metadata").json())
         return self._metadata
     
     @metadata.setter
