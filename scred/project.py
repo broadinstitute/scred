@@ -2,84 +2,51 @@
 scred/project.py
 
 Uses REDCap interface and data types defined in other modules to create more complex
-classes.
+classes. Can't go in `dtypes` module because it relies on the `webapi` module, which
+lives "above" `dtypes` in the hierarchy.
 """
 
 from . import webapi
 from . import dtypes
-from .config import DEFAULT_SETTINGS, USER_CFG, RedcapConfig
-
-# ---------------------------------------------------
-# To construct requester based on class of `requester` arg in RedcapProject.
-# All of this might belong in webapi.py though...
-
-def _requester_from_config(cfg):
-    return webapi.RedcapRequester(cfg)
-
-def _requester_from_token(token):
-    # If given just a token, use default settings and build up a requester
-    if len(token) != 32:
-        raise ValueError(f"REDCap tokens should be 32 characters long. Got {len(token)}")
-    cfg = DEFAULT_SETTINGS
-    cfg.update({"token": token})
-    return webapi.RedcapRequester(RedcapConfig(cfg))
-
-def _requester_reflexive(requester):
-    # If already given a requester, just bounce back
-    return requester
-
-def _requester_from_default():
-    # Fall back to contents of `scred/config.json`
-    return webapi.RedcapRequester(USER_CFG)
-
-def _get_requester_dispatcher():
-    # Avoids polluting global namespace. Maps arg's class to function that takes it 
-    return {
-        RedcapConfig: _requester_from_config,
-        str: _requester_from_token,
-        webapi.RedcapRequester: _requester_reflexive,
-    }
-
-def _create_requester(construct_arg):
-    # Called when init'ing RedcapProject to make arg type flexible
-    if not construct_arg:
-        return _requester_from_default()
-    argclass = construct_arg.__class__
-    dispatcher = _get_requester_dispatcher()
-    try:
-        constructor = dispatcher[argclass]
-    except KeyError:
-        raise TypeError(
-            "Project must be built from token (str), config, or None, not "
-            f"{construct_arg}"
-        ) 
-    return constructor(construct_arg)
 
 # ---------------------------------------------------
    
 class RedcapProject:
-    def __init__(self, token = None, url = None, *args, **kwargs):
-        self.set_url(url)
-        if token:
-            self.use_token(token)
+    """
+    Main class for top-level interaction. Requires a token and url to create requester.
+    """
+    def __init__(self, url, token, metadata = None, requester_kwargs = None):
+        if requester_kwargs is None:
+            requester_kwargs = dict()
+        self.requester = webapi.RedcapRequester(
+            token=token,
+            url=url,
+            **requester_kwargs,
+        )
+        self._metadata = None
 
+    @property
+    def metadata(self):
+        """
+        Property that holds the metadata (Data Dictionary) for this project instance.
+        """
+        if self._metadata is None:
+            self._metadata = dtypes.DataDictionary(self.post(content="metadata"))
+        return self._metadata
+    
+    @metadata.setter
+    def metadata(self, value):
+        if not isinstance(value, (dtypes.DataDictionary, None)):
+            raise TypeError("metadata must be None or DataDictionary")
+        self._metadata = value
 
-    def use_token(self, token):
-        if not self.url:
-            raise AttributeError("You must point to a REDCap instance before using the token")
-        self.requester = _requester_from_token(token)
-        self.requester.url = self.url
-
-
-    def set_url(self, url):
-        self.url = url
-
+    @property
+    def url(self):
+        return self.requester.url
 
     def post(self, **kwargs):
         return self.requester.post(**kwargs)
 
-
-    # Liking the "top line of docstring for source" thing
     def get_export_fieldnames(self, fields = None):
         """ (From REDCap documentation)
         This method returns a list of the export/import-specific version of field names for all fields
@@ -100,7 +67,22 @@ class RedcapProject:
         """
         payload_kwargs = {"content": "exportFieldNames"}
         if fields:
-            payload_kwargs.update(field=fields)
+            payload_kwargs.update(field=",".join(fields))
         return self.post(payload_kwargs)
     
+    def get_records(self, records = None, fields = None, **kwargs):
+        """
+        Export a set of records from the given project. Optional arguments also include:
+            -forms (replace spaces with _)
+            -dateRangeBegin
+            -dateRangeEnd
+        For dateRange options, format as YYYY-MM-DD HH:MM:SS. Records retrieved are created
+        OR modified within that range, and time boundaries are exclusive.
+        """
+        payload = {"content": "record"}
+        if records:
+            payload.update(records=",".join(records))
+        if fields:
+            payload.update(fields=",".join(fields))
+        return self.post(**payload, **kwargs).json()
 

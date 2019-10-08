@@ -16,8 +16,8 @@ This dataframe must contain at least these 2 columns:
     'branching_logic': pythonic branching logic (see documentation)
 
 Calling parser.parse() will set the attribute parser.data to a copy of the initial DataFrame; but with a new column,
-'LOGIC_MET', that is only True if the branching logic was satisfied by the record data. This can be used to separate 
-the two types of missing values and is implemented in the Record class (scred/dtypes.py).
+`LOGIC_MET`, that is only True if the branching logic was satisfied by the record data. This column can be used to
+separate the two types of missing values, as implemented in the Record class (see scred/dtypes.py).
 """
 
 import warnings
@@ -44,6 +44,9 @@ logic = cond_chain_with_parentheses + pp.StringEnd() # The full grammar
 
 # Value: convert to numeric
 def list_to_ints(list_of_nums):
+    """
+    Receives a list of nums because <fill in more when I review pyparsing again>
+    """
     # It's ok that this casts to int--RC branching logic doesn't support floats
     return [ int(k) for k in list_of_nums ]
 
@@ -67,7 +70,8 @@ cond.setParseAction(check_condition)
 
 
 def fullparse(expression):
-    """Takes in an expression and parses it using the full branching logic. This
+    """
+    Takes in an expression and parses it using the full branching logic. This
     attempts to split the string into tokens, put the tokens back together
     in a string with responses instead of field names, and evaluate that string.
     """
@@ -93,15 +97,19 @@ class Parser:
         self.data["LOGIC_MET"] = "" # Add empty column for logic result
         # Complete parser setup by pointing action at this instance
         key.setParseAction(self.use_key)
-        
+
+
     def use_key(self, list_with_key):
-        """Access a key's value in the instance data."""
+        """
+        Access a key's value in the instance data.
+        """
         k = list_with_key[0]
         try:
             return self.val_from_key(k) 
         except KeyError:
             warnings.warn(f"WARNING: Caught KeyError in Parser.use_key() for {k}")
             return False
+
 
     def val_from_key(self, key, data=None):
         """
@@ -116,8 +124,11 @@ class Parser:
         except IndexError:
             return None
 
+
     def parse_all_logic(self):
-        """Fill 'LOGIC_MET' column for each field"""
+        """
+        Fill `LOGIC_MET` column for each field in the record, based on other responses in the record.
+        """
         temp_df = self.data.copy() # Unsafe to alter original during loop
         for idx, row in self.data.iterrows():
             try:

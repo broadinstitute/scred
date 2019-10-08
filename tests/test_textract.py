@@ -1,8 +1,7 @@
-# Testing scred/webapi.py
+# Testing scred/textract.py
 
 import os
 import sys
-import json
 from pathlib import Path
 
 import pytest
@@ -13,10 +12,11 @@ sys.path.insert(
     )
 )
 
-import scred.webapi as webapi
-from . import testdata
+import scred.textract as txr
+from .testdata import MockProject
 
 # ---------------------------------------------------
 
-def test_create_requester(mock_url, mock_token):
-    r = webapi.RedcapRequester(mock_url, mock_token)
+def test_create_textractor_with_mock_project():
+    mock_project = MockProject()
+    t = txr.Textractor(mock_project, "subjid")

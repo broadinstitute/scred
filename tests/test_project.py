@@ -13,14 +13,9 @@ sys.path.insert(
 )
 
 from scred import RedcapProject
-from scred.config import TEST_CFG
 from . import testdata
 
 # ---------------------------------------------------
-
-def test_RedcapProject_init_with_empty_args_permitted():
-    rp = RedcapProject()
-
 
 def test_RedcapProject_init_with_token_and_url():
     faketoken = "ABCD9999DDDDXXZZ067JTP01Y44MSPD1"
