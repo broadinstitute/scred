@@ -9,11 +9,15 @@ Not implemented yet:
 
 -Supertokens to manage multiple projects
 
+-Configurable missingness codes
+
+-Non-metadata project attributes, e.g. version
+
 -Data Access Groups
 
--Basically everything involving stuff going *into* REDCap instead of *out*
+-Basically everything involving data going *into* REDCap instead of *out*
 
-**MOCK USE**
+# Basic use
 ```python
 import scred
 
@@ -22,15 +26,21 @@ redcap_url = "https://redcap.fake.example.com/api/"
 primary_idvar = "participant_id" # change to match your project
 
 # Set up project; get records; get data dictionary
-project = scred.RedcapProject(token=redcap_token, url=redcap_url)
-records = scred.RecordSet(
-    records=project.post(content="record").json(),
-    id_key=primary_idvar
-)
-datadict = scred.DataDictionary(
-    project.post(content="metadata").json()
-)
+myproject = scred.RedcapProject(url=redcap_url, token=redcap_token)
+records_json = myproject.get_records()
+records = scred.RecordSet(records_json, primary_key=primary_idvar)
+datadict = myproject.metadata # needed to distinguish N/A from true missing;
+records.fill_missing(datadict) # both are blank in REDCap
+```
 
-# Fill in N/A vs. True Missing (codes not yet configurable)
-records.fill_missing(datadict)
+# Specifying records and fields
+```python
+myproject = scred.RedcapProject(url=redcap_url, token=redcap_token)
+# Pass kwargs to use any supported API features
+records_json = myproject.get_records(
+    records=[1, 7, 9, 23, 55, 80],
+    fields=["identifier", "height_cm", "weight_kg", "heart_bpm"],
+    filterLogic="age > 22 and age <= 65",
+    dateRangeBegin="2019-01-01 00:00:00",
+)
 ```

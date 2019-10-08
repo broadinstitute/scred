@@ -232,7 +232,6 @@ class DataDictionary(pd.DataFrame):
                 name="field_name",
             )
             super().__init__(data, index=idx)
-        # self.raw_response = data
         self._blogic_fmt = blogic_fmt
     
     @property
