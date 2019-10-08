@@ -259,6 +259,7 @@ class DataDictionary(pd.DataFrame):
         if blogic in bouncebacks:
             return ""
         clean = blogic.replace("[", "").replace("]", "")
+        # TODO: Use re.sub
         clean = clean.replace("=", "==") # next lines fix >== and <==
         clean = clean.replace(">==", ">=")
         clean = clean.replace("<==", "<=")
