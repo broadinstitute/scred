@@ -40,5 +40,8 @@ class RedcapRequester:
         else:
             return response
 
+    def get_metadata(self):
+        return self.post(content="metadata").json()
+
     def get_version(self):
-        return self.post(content="version")
+        return self.post(content="version").text

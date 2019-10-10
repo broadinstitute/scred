@@ -24,14 +24,20 @@ class RedcapProject:
             **requester_kwargs,
         )
         self._metadata = None
+        self._version = None
 
+    @property
+    def url(self):
+        return self.requester.url
+
+    # Maybe cut down on boilerplate with @lazyload decorator? Checks if None, sets if so
     @property
     def metadata(self):
         """
         Property that holds the metadata (Data Dictionary) for this project instance.
         """
         if self._metadata is None:
-            self._metadata = dtypes.DataDictionary(self.post(content="metadata").json())
+            self._metadata = dtypes.DataDictionary(self.requester.get_metadata())
         return self._metadata
     
     @metadata.setter
@@ -41,8 +47,10 @@ class RedcapProject:
         self._metadata = value
 
     @property
-    def url(self):
-        return self.requester.url
+    def version(self):
+        if self._version is None:
+            self._version = self.requester.get_version()
+        return self._version
 
     def post(self, **kwargs):
         return self.requester.post(**kwargs)
@@ -68,7 +76,7 @@ class RedcapProject:
         payload_kwargs = {"content": "exportFieldNames"}
         if fields:
             payload_kwargs.update(field=",".join(fields))
-        return self.post(payload_kwargs)
+        return self.post(payload_kwargs).json()
     
     def get_records(self, records = None, fields = None, **kwargs):
         """
@@ -80,9 +88,9 @@ class RedcapProject:
         OR modified within that range, and time boundaries are exclusive.
         """
         payload = {"content": "record"}
-        if records:
+        if records and not isinstance(records, str):
             payload.update(records=",".join(records))
-        if fields:
+        if fields and not isinstance(fields, str):
             payload.update(fields=",".join(fields))
         return self.post(**payload, **kwargs).json()
 

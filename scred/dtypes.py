@@ -287,6 +287,7 @@ class DataDictionary(pd.DataFrame):
         if self.blogic_fmt == "python":
             return
         fieldslogic = dict()
+        # TODO: Is it faster to just use .loc instead of JSONifying? Profile.
         for fdict in json.loads(self.to_json(orient="records")):
             rclogic = fdict["branching_logic"]
             pylogic = self._logic_statement_to_python(rclogic)
@@ -296,8 +297,8 @@ class DataDictionary(pd.DataFrame):
         self.blogic_fmt = "python"
 
     def copy(self):
-        dfcopy = super().copy()
-        return __class__(dfcopy, blogic_fmt=self.blogic_fmt)
+        df_copy = super().copy()
+        return __class__(df_copy, blogic_fmt=self.blogic_fmt)
 
 # ===================================================
 
