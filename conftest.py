@@ -26,7 +26,7 @@ def mock_records_response(mock_records_json):
 
 @pytest.fixture(scope="session")
 def mock_config():
-    json_str = Path("scred/config.json.example").read_text()
+    json_str = Path("scred/config.json").read_text()
     return json.loads(json_str)
 
 @pytest.fixture(scope="session")
