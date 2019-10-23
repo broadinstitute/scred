@@ -12,7 +12,7 @@ import requests
 
 # ---------------------------------------------------
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_records_json():
     from tests import testdata
     return testdata.get_stored_neurogap_record_response()
