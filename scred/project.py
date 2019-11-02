@@ -89,8 +89,10 @@ class RedcapProject:
         """
         payload = {"content": "record"}
         if records and not isinstance(records, str):
-            payload.update(records=",".join(records))
+            records = ",".join(records)
+        payload.update(records=records)
         if fields and not isinstance(fields, str):
-            payload.update(fields=",".join(fields))
+            fields = ",".join(fields)
+        payload.update(fields=fields)
         return self.post(**payload, **kwargs).json()
 
