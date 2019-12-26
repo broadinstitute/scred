@@ -23,7 +23,7 @@ def _setup_testdata_DataDictionary():
 
 def _setup_neurogap_practice_DataDictionary():
     return DataDictionary(
-        testdata.get_stored_neurogap_datadictionary_response()
+        testdata.get_stored_neurogap_metadata_response()
     )
 
 # ---------------------------------------------------
@@ -46,7 +46,7 @@ def test_DataDictionary_instance_is_subclass_of_pandas_DataFrame():
 
 def test_DataDictionary_has_field_name_as_index():
     dd = _setup_testdata_DataDictionary()
-    assert dd.index.name == "field_name"
+    assert dd.index.name == "field_name", dd.index.name
 
 def test_make_logic_pythonic_converts_redcap_syntax():
     dd = _setup_neurogap_practice_DataDictionary()
@@ -67,3 +67,10 @@ def test_DataDictionary_copy():
     dd2 = dd.copy()
     assert dd2 is not dd
     assert all(dd == dd2)
+
+def test_DataDictionary_checkboxes_property():
+    dd = _setup_neurogap_practice_DataDictionary()
+    cbs = dd.checkboxes
+    assert "lec_q1" in cbs
+    assert "lec_q6" in cbs
+    assert "lec_q100" not in cbs

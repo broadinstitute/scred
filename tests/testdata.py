@@ -19,7 +19,7 @@ def get_fake_datadict_response():
     required_field = ["y"]*7 + [""]*2 + ["y"]*2
     # TODO: Clean this up at some point. Good thing for new person to do.
     # Switch to more complete example and/or NamedTuple so we don't mix up
-    # arg positions later.
+    # arg positions later. Also much easier with pandas tools
     dlist = []
     for atuple in zip(field_name, form_name, branching_logic, required_field):
         dlist.append({  
@@ -36,7 +36,7 @@ def get_stored_neurogap_record_response():
         raw = json.load(fp)
     return raw
 
-def get_stored_neurogap_datadictionary_response():
+def get_stored_neurogap_metadata_response():
     # The list of dicts we get from response.json()
     with open("tests/stored_neurogap_practice_datadict.json", "r") as fp:
         raw = json.load(fp)

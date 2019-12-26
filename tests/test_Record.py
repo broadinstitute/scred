@@ -6,18 +6,18 @@ import sys
 import pytest
 import pandas as pd
 
-sys.path.insert(
-    0, os.path.abspath(
-        os.path.join(os.path.dirname(__file__), '..')
-    )
-)
+# sys.path.insert(
+#     0, os.path.abspath(
+#         os.path.join(os.path.dirname(__file__), '..')
+#     )
+# )
 
 from scred.dtypes import Record, RecordSet, DataDictionary
 from . import testdata
 
 def _setup_stored_datadict_and_record():
     stored_datadict = DataDictionary(
-        testdata.get_stored_neurogap_datadictionary_response()
+        testdata.get_stored_neurogap_metadata_response()
     )
     # stored_record_response has all observations; take 0th so we can
     # work on an individual record instead of a recordset
@@ -29,7 +29,7 @@ def _setup_stored_datadict_and_record():
 
 def _setup_stored_datadict_and_recordset():
     stored_datadict = DataDictionary(
-        testdata.get_stored_neurogap_datadictionary_response()
+        testdata.get_stored_neurogap_metadata_response()
     )
     stored_recordset = RecordSet(
         primary_key="subjid",

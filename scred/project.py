@@ -25,6 +25,7 @@ class RedcapProject:
         )
         self._metadata = None
         self._version = None
+        self._efn = None
 
     @property
     def url(self):
@@ -47,37 +48,56 @@ class RedcapProject:
         self._metadata = value
 
     @property
+    def efn(self):
+        if self._efn is None:
+            self._efn = self.requester.get_export_fieldnames()
+        return self._efn
+
+    @efn.setter # TODO: Refactor this
+    def efn(self, value):
+        """
+        Creates the map of checkboxes to lists of their exportFieldNames.
+        HAVE: list of dicts; each dict has original_name, choice_value, export_name
+        WANT: dict of original_name -> list[exported]
+        """
+        differing = [
+            d for d in value 
+            if d["original_field_name"] != d["export_field_name"] 
+        ]
+        # get all original names in `differing`
+        names = [ d["original_field_name"] for d in differing ]
+        names = set(names)
+        final = dict()
+        for nm in names:
+            relevant = [ d for d in differing if d["original_field_name"] == nm ]
+            exports = [ d["export_field_name"] for d in relevant ]
+            final[nm] = exports
+        # select the dicts with that original name
+        # create a list of their export_names
+        self._efn = final
+
+    @property
     def version(self):
         if self._version is None:
             self._version = self.requester.get_version()
         return self._version
+    
+    @version.setter
+    def version(self, value):
+        self._version = value
 
     def post(self, **kwargs):
         return self.requester.post(**kwargs)
-
-    def get_export_fieldnames(self, fields = None):
-        """ (From REDCap documentation)
-        This method returns a list of the export/import-specific version of field names for all fields
-        (or for one field, if desired) in a project. This is mostly used for checkbox fields because
-        during data exports and data imports, checkbox fields have a different variable name used than
-        the exact one defined for them in the Online Designer and Data Dictionary, in which *each checkbox
-        option* gets represented as its own export field name in the following format: field_name +
-        triple underscore + converted coded value for the choice. For non-checkbox fields, the export
-        field name will be exactly the same as the original field name. Note: The following field types
-        will be automatically removed from the list returned by this method since they cannot be utilized
-        during the data import process: 'calc', 'file', and 'descriptive'.
-
-        The list that is returned will contain the three following attributes for each field/choice:
-        'original_field_name', 'choice_value', and 'export_field_name'. The choice_value attribute
-        represents the raw coded value for a checkbox choice. For non-checkbox fields, the choice_value
-        attribute will always be blank/empty. The export_field_name attribute represents the export/import-
-        specific version of that field name.
-        """
-        payload_kwargs = {"content": "exportFieldNames"}
-        if fields:
-            payload_kwargs.update(field=",".join(fields))
-        return self.post(payload_kwargs).json()
     
+    def cbnames(self, cbvar: str):
+        """
+        Takes a checkbox variable name and returns all exported field names. For example,
+        let field `some_event` have options {-1, 1, 2, 999}:
+            >>> myproject.cbnames('some_event')
+            ['some_event____1', 'some_event___1', 'some_event___2', 'some_event___999']
+        """
+        return self.efn[cbvar]
+        
     def get_records(self, records = None, fields = None, **kwargs):
         """
         Export a set of records from the given project. Optional arguments also include:
@@ -96,3 +116,14 @@ class RedcapProject:
         payload.update(fields=fields)
         return self.post(**payload, **kwargs).json()
 
+    def any_endorsed(self, record, checkbox) -> bool:
+        """
+        Given a `record`, looks to see if any export field for `checkbox` was endorsed.
+        """
+        exports = self.cbnames(checkbox)
+        for var in exports:
+            checked = record.rcvalue(var)
+            if checked:
+                assert isinstance(checked, int)
+                return True
+        return False

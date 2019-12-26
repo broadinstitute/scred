@@ -240,6 +240,11 @@ class DataDictionary(pd.DataFrame):
         Branching logic format.
         """
         return self._blogic_fmt
+    
+    @property
+    def checkboxes(self):
+        mask = (self["field_type"] == "checkbox")
+        return self.loc[mask, "field_name"]
 
     @blogic_fmt.setter
     def blogic_fmt(self, value: str):
@@ -257,12 +262,8 @@ class DataDictionary(pd.DataFrame):
         bouncebacks = [None, ""]
         if blogic in bouncebacks:
             return ""
-        clean = blogic.replace("[", "").replace("]", "")
-        # TODO: Use re.sub
-        clean = clean.replace("=", "==") # next lines fix >== and <==
-        clean = clean.replace(">==", ">=")
-        clean = clean.replace("<==", "<=")
-        clean = clean.replace("'", "")
+        clean = re.sub(r"[\[\]']", "", blogic)
+        clean = re.sub(r"([^<>])(=)", r"\g<1>==", clean)
         clean = DataDictionary.convert_checkbox_names(clean)
         return clean
 
@@ -273,7 +274,11 @@ class DataDictionary(pd.DataFrame):
             DO change: 'nonpsych_meds_cat(999) == 1' becomes 'nonpsych_meds_cat___999 == 1'.
             DON'T change: '(nonpsych_meds == 1 or nonpsych_meds == -777)' stays as-is.
         """
-        pattern = re.compile(r"(?P<field>\w+)\((?P<negative>-?)(?P<choice>\d+)\)")
+        pattern = re.compile(
+            r"(?P<field>\w+)\("
+            r"(?P<negative>-?)"
+            r"(?P<choice>\d+)\)"
+        )
         return re.sub(
             pattern, 
             lambda m: f"{m['field']}___{'_' if m['negative'] else ''}{m['choice']}",
@@ -298,7 +303,9 @@ class DataDictionary(pd.DataFrame):
 
     def copy(self):
         df_copy = super().copy()
-        return __class__(df_copy, blogic_fmt=self.blogic_fmt)
+        return self.__class__(df_copy, blogic_fmt=self.blogic_fmt)
+    
+    
 
 # ===================================================
 
