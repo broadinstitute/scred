@@ -116,7 +116,7 @@ class Parser:
         Helper function that takes a key, looks that key up in the instance record, then returns its value.
         Not sure how this works with use_key and giving a list and all that, but it does. Should revisit.
         """
-        if data == None: 
+        if data == None:
             data = self.data
         try:
             return data.loc[ key, "response" ]
