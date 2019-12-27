@@ -50,7 +50,7 @@ class RedcapProject:
     @property
     def efn(self):
         if self._efn is None:
-            self._efn = self.requester.get_export_fieldnames()
+            self.efn = self.requester.get_export_fieldnames()
         return self._efn
 
     @efn.setter # TODO: Refactor this
@@ -127,3 +127,13 @@ class RedcapProject:
                 assert isinstance(checked, int)
                 return True
         return False
+
+    # def was_asked(self, record, variable: str) -> bool:
+    #     """
+    #     Uses project metadata to see if observation `record` satisfied the branching logic
+    #     for field `variable`.
+    #     """
+    #     meta = self.metadata
+    #     assert meta.blogic_fmt == "python"
+    #     logic = meta.loc[variable, "branching_logic"]
+    #     parser = dtypes.backfillna.Parser(record)
