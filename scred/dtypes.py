@@ -56,9 +56,6 @@ class Record(pd.DataFrame):
             raise ValueError(f"Invalid ID format: {value}")
         self._id = value
 
-    def __str__(self):
-        return f"{self.__class__.__name__}: {self.id}"
-
     def require_column(self, col, default_value = "", flexible = True):
         # TODO? Could make this a decorator. If I do, think I can put name of calling func in error
         if col in self.columns.array:
@@ -101,10 +98,20 @@ class Record(pd.DataFrame):
         if self.nafilled is True:
             return
         self.require_column("branching_logic", flexible=False)
+        checkboxes = datadict.checkboxes
         parser = backfillna.Parser(self)
         parser.parse_all_logic()
-        namask = (parser.data["response"]=="") & (parser.data["LOGIC_MET"]==False)
+        namask = (
+            (parser.data["response"]=="") 
+            & (parser.data["LOGIC_MET"] == False) # bitmask means we need ==, not 'is'
+        )
+        cbna = (
+            (parser.data["response"].isin([0, "0"]))
+            & (parser.data["LOGIC_MET"] == False)
+            & (parser.data.index.str.contains("___"))
+        )
         parser.data.loc[namask, "response"] = Record.NACODE
+        parser.data.loc[cbna, "response"] = Record.NACODE
         # Transfer filled responses to this object and set tracking attribute
         self.loc[:, "response"] = parser.data.loc[:, "response"]
         self.nafilled = True
@@ -244,7 +251,7 @@ class DataDictionary(pd.DataFrame):
     @property
     def checkboxes(self):
         mask = (self["field_type"] == "checkbox")
-        return self.loc[mask, "field_name"]
+        return self.loc[mask, "field_name"].tolist()
 
     @blogic_fmt.setter
     def blogic_fmt(self, value: str):
