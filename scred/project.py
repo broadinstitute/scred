@@ -6,6 +6,8 @@ classes. Can't go in `dtypes` module because it relies on the `webapi` module, w
 lives "above" `dtypes` in the hierarchy.
 """
 
+from typing import List, Dict
+
 from . import webapi
 from . import dtypes
 
@@ -53,35 +55,32 @@ class RedcapProject:
             self.efn = self.requester.get_export_fieldnames()
         return self._efn
 
-    @efn.setter # TODO: Refactor this
-    def efn(self, value):
+    @efn.setter # TODO: Refactor
+    def efn(self, value: List[Dict]):
         """
         Creates the map of checkboxes to lists of their exportFieldNames.
         HAVE: list of dicts; each dict has original_name, choice_value, export_name
         WANT: dict of original_name -> list[exported]
         """
+        mapping = dict()
         differing = [
-            d for d in value 
-            if d["original_field_name"] != d["export_field_name"] 
+            d for d in value
+            if d["original_field_name"] != d["export_field_name"]
         ]
-        # get all original names in `differing`
         names = [ d["original_field_name"] for d in differing ]
         names = set(names)
-        final = dict()
         for nm in names:
             relevant = [ d for d in differing if d["original_field_name"] == nm ]
             exports = [ d["export_field_name"] for d in relevant ]
-            final[nm] = exports
-        # select the dicts with that original name
-        # create a list of their export_names
-        self._efn = final
+            mapping[nm] = exports
+        self._efn = mapping
 
     @property
     def version(self):
         if self._version is None:
             self._version = self.requester.get_version()
         return self._version
-    
+
     @version.setter
     def version(self, value):
         self._version = value
