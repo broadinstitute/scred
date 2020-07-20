@@ -6,13 +6,18 @@ classes. Can't go in `dtypes` module because it relies on the `webapi` module, w
 lives "above" `dtypes` in the hierarchy.
 """
 
-from typing import List, Dict
+from copy import deepcopy
+from typing import List, Dict, Optional
+
+import requests
 
 from . import webapi
 from . import dtypes
+from .utils import chunker
 
 # ---------------------------------------------------
-   
+
+
 class RedcapProject:
     """
     Main class for top-level interaction. Requires a token and url to create requester.
@@ -31,6 +36,9 @@ class RedcapProject:
 
     @property
     def url(self):
+        """
+        API entry point URL for REDCap server hosting the project.
+        """
         return self.requester.url
 
     # Maybe cut down on boilerplate with @lazyload decorator? Checks if None, sets if so
@@ -51,6 +59,10 @@ class RedcapProject:
 
     @property
     def efn(self):
+        """
+        exportFieldNames for the REDCap project. 
+        Maps (field in REDCap) -> (List[fields in export])
+        """
         if self._efn is None:
             self.efn = self.requester.get_export_fieldnames()
         return self._efn
@@ -59,8 +71,8 @@ class RedcapProject:
     def efn(self, value: List[Dict]):
         """
         Creates the map of checkboxes to lists of their exportFieldNames.
-        HAVE: list of dicts; each dict has original_name, choice_value, export_name
-        WANT: dict of original_name -> list[exported]
+        GETS: list of dicts; each dict has original_name, choice_value, export_name
+        SETS: dict of original_name -> list[exported]
         """
         mapping = dict()
         differing = [
@@ -71,8 +83,8 @@ class RedcapProject:
         names = set(names)
         for nm in names:
             relevant = [ d for d in differing if d["original_field_name"] == nm ]
-            exports = [ d["export_field_name"] for d in relevant ]
-            mapping[nm] = exports
+            export_names = [ d["export_field_name"] for d in relevant ]
+            mapping[nm] = export_names
         self._efn = mapping
 
     @property
@@ -86,6 +98,9 @@ class RedcapProject:
         self._version = value
 
     def post(self, **kwargs):
+        """
+        Generic POST wrapper to allow unsupported requests.
+        """
         return self.requester.post(**kwargs)
     
     def cbnames(self, cbvar: str):
@@ -97,24 +112,6 @@ class RedcapProject:
         """
         return self.efn[cbvar]
         
-    def get_records(self, records = None, fields = None, **kwargs):
-        """
-        Export a set of records from the given project. Optional arguments also include:
-            -forms (replace spaces with _)
-            -dateRangeBegin
-            -dateRangeEnd
-        For dateRange options, format as YYYY-MM-DD HH:MM:SS. Records retrieved are created
-        OR modified within that range, and time boundaries are exclusive.
-        """
-        payload = {"content": "record"}
-        if records and not isinstance(records, str):
-            records = ",".join(records)
-        payload.update(records=records)
-        if fields and not isinstance(fields, str):
-            fields = ",".join(fields)
-        payload.update(fields=fields)
-        return self.post(**payload, **kwargs).json()
-
     def any_endorsed(self, record, checkbox) -> bool:
         """
         Given a `record`, looks to see if any export field for `checkbox` was endorsed.
@@ -127,12 +124,75 @@ class RedcapProject:
                 return True
         return False
 
-    # def was_asked(self, record, variable: str) -> bool:
-    #     """
-    #     Uses project metadata to see if observation `record` satisfied the branching logic
-    #     for field `variable`.
-    #     """
-    #     meta = self.metadata
-    #     assert meta.blogic_fmt == "python"
-    #     logic = meta.loc[variable, "branching_logic"]
-    #     parser = dtypes.backfillna.Parser(record)
+    def get_records(self, records = None, chunksize: int = 20, **kwargs):
+        """
+        Export a set of records from the given project. Optional arguments also include:
+            -forms (replace spaces with _)
+            -dateRangeBegin
+            -dateRangeEnd
+        For dateRange options, format as YYYY-MM-DD HH:MM:SS. Records retrieved are created
+        OR modified within that range, and time boundaries are exclusive.
+        """
+        downloader = RecordsDownloader(self.requester, chunksize=chunksize, params=kwargs)
+        
+        # Here: Room for func that does this and/or handles chunking, async setup
+        # return self.post(**payload, **kwargs).json()
+
+
+class RecordsDownloader:
+    """
+    Handles the download of record data from REDCap. Primarily called through instances
+    of RedcapProject.
+    """
+    def __init__(self, requester, chunksize: int = 20, params: Optional[dict] = None):
+        self.requester = requester
+        self.chunksize = chunksize
+        if params is None:
+            params = dict()
+        for p, v in params.items():
+            params[p] = requester.sanitize_param(v) # params will be same across POSTs
+        self.static_payload = {
+            "content": "record",
+            **params,
+        }
+
+    def _iter_records(self, records):
+        """
+        Iterate over the collection of IDs `records`, yielding blocks of len `chunksize`
+        until iterator is exhausted. 
+        """
+        chunk = deepcopy(records) # avoid mutating passed arg
+        while len(chunk) >= self.chunksize:
+            yield chunk[:self.chunksize]
+            del chunk[:self.chunksize]
+        yield chunk
+
+    def fetch_records(self, chunk):
+        """
+        Downloads records listed in `chunk`, yielding each response's JSON content.
+        NOTE: What if they aren't using JSON though? 
+        """
+        to_retry = list()
+        for chunk in self._iter_records(records):
+            try:
+                yield self.requester.post(self.static_payload, records=chunk).json()
+            except requests.HTTPError as ex:
+                print(f"[DEV] TODO: Retry this request!\nError: {ex}")
+                to_retry.append(chunk) # worry about this after the rest works
+                # it.chain(iterator, chunk) (?)
+        # TODO not done just brainstorming
+
+        # Remember: This is usually getting called by a project. But not always.
+        # I also want to do async eventually, so don't want to return all at once.
+        # Could the project also yield, pass this up to user who can init records?
+        # NEED to test this!! New territory here, dangerous. Do not erase these
+        # 2 lines until there are tests in place!
+        # TEST: What if I pass records= as a param also? Which one wins?
+
+test_params = {"fields": ["field1", "field2", "NonExistentField"], "fakeparam": 25}
+test_records = ["ABC123", "ABC456", "NonExistentRecord"]
+syncer = RecordsDownloader(requester, chunksize=20, test_params)
+def mock_sync():
+    for content in syncer.fetch_records(test_records):
+        instances = dtypes.RecordSet(content, primary_key="subj_id")
+    # TODO: Do I want to be able to set up an empty RecordSet? Or combine them easily?

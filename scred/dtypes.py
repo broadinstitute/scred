@@ -30,7 +30,7 @@ class Record(pd.DataFrame):
     # Record.set_template(r"some_regex"); participant = Record(my_data)
     def __init__(self, primary_key: str, data: dict = dict()):
         """
-        REDCap API will present a list of dicts; each dict is one record. We create a
+        REDCap API will return a list of dicts; each dict is one record. We create a
         record from a response dict and can handle bulk pulls with loops/RecordSet.
         """
         redcap_fields, responses = data.keys(), data.values()
@@ -89,7 +89,7 @@ class Record(pd.DataFrame):
                 if not varname.endswith("_complete"): # not expected to exist in datadict
                     warnings.warn(f"Cannot find {varname} in record and/or datadict")
 
-    def _fill_na_values(self, datadict):
+    def _fill_na_values(self, metadata):
         """
         Using a pythonic `branching_logic` column, fill in Non-Applicable REDCap values. 
         That is, if branching logic is NOT satisfied, we expect the field to be blank and 
@@ -98,7 +98,7 @@ class Record(pd.DataFrame):
         if self.nafilled is True:
             return
         self.require_column("branching_logic", flexible=False)
-        checkboxes = datadict.checkboxes
+        checkboxes = metadata.checkboxes
         parser = backfillna.Parser(self)
         parser.parse_all_logic()
         namask = (
@@ -126,22 +126,22 @@ class Record(pd.DataFrame):
         self.loc[ self["response"]=="", "response" ] = Record.BADCODE
         self.bdfilled = True
 
-    def fill_missing(self, datadict):
+    def fill_missing(self, metadata):
         """
         Composite method to handle all logic conversion and backfilling. Convenience
         feature for users; recommended you use this when implementing.
         """
-        self.add_branching_logic(datadict)
-        self._fill_na_values(datadict)
+        self.add_branching_logic(metadata)
+        self._fill_na_values(metadata)
         self._fill_bad_data()
     
-    def rcvalue(self, fieldname):
+    def rcvalue(self, field):
         """
         Used to more easily access numeric data in the `response` column. Only needs a
         field name; automatically gets response and attempts to make it numeric.
         """
         try:
-            value = self.loc[fieldname, "response"]
+            value = self.loc[field, "response"]
         except KeyError as ex:
             raise ValueError(f"Invalid field: {ex}")
         converter = int
@@ -151,6 +151,17 @@ class Record(pd.DataFrame):
             return converter(value)
         except TypeError:
             return value
+    
+    def alter_value(self, field, new_value):
+        """
+        Used to change a stored value using underlying DataFrame's `.loc` method. Abstracts
+        away column names.
+        """
+        try:
+            self.loc[field, "response"]
+        except KeyError:
+            warnings.warn(f"{field} was not an existing key; creating new row")
+        self.loc[field, "response"] = new_value
 
 
 class RecordSet(dict):
@@ -187,8 +198,9 @@ class RecordSet(dict):
         know that method exists and expect it to function in isolation. The given
         data dictionary, `metadata`, is used to look up branching logic.
         """
-        for record in self.values():
-            record.fill_missing(metadata)
+        for record in self.values(): # TODO: Add tests
+            if not (record.bdfilled and record.nafilled):
+                record.fill_missing(metadata)
             
     def as_dataframe(self):
         df = pd.DataFrame()
@@ -311,8 +323,8 @@ class DataDictionary(pd.DataFrame):
     def copy(self):
         df_copy = super().copy()
         return self.__class__(df_copy, blogic_fmt=self.blogic_fmt)
-    
-    
+
+
 
 # ===================================================
 

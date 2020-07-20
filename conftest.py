@@ -5,6 +5,7 @@ Shares objects used by pytest.
 """
 
 import json
+import random
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,8 @@ import requests
 
 import scred
 from tests import testdata
+
+random.seed(131002)
 
 # ---------------------------------------------------
 
@@ -65,3 +68,14 @@ def mock_project(stored_DataDictionary_object):
     )
     rp.metadata = stored_DataDictionary_object
     return rp
+
+@pytest.fixture
+def mock_ids_clean():
+    """Mock REDCap primary IDs that are well-behaved."""
+    prefixes = ["ABC", "DEF", "GHJ", "KMN"]
+    pref = random.choices(prefixes, k=100)
+    nums = [ random.randint(10000000, 99999999) for _ in range(0, 100) ]
+    return [
+        z[0] + str(z[1]) 
+        for z in zip(pref, nums)
+    ]
