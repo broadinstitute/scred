@@ -1,9 +1,9 @@
 """
 scred/project.py
 
-Uses REDCap interface and data types defined in other modules to create more complex
-classes. Can't go in `dtypes` module because it relies on the `webapi` module, which
-lives "above" `dtypes` in the hierarchy.
+Uses REDCap interface and data types defined in other modules to create more
+complex classes. Can't go in `dtypes` module because it relies on the `webapi`
+module, which lives "above" `dtypes` in the hierarchy.
 """
 
 from copy import deepcopy
@@ -20,9 +20,10 @@ from .utils import chunker
 
 class RedcapProject:
     """
-    Main class for top-level interaction. Requires a token and url to create requester.
+    Main class for top-level interaction. Requires a token and url to create
+    requester.
     """
-    def __init__(self, url, token, metadata = None, requester_kwargs = None):
+    def __init__(self, url, token, metadata=None, requester_kwargs=None):
         if requester_kwargs is None:
             requester_kwargs = dict()
         self.requester = webapi.RedcapRequester(
@@ -41,16 +42,19 @@ class RedcapProject:
         """
         return self.requester.url
 
-    # Maybe cut down on boilerplate with @lazyload decorator? Checks if None, sets if so
+    # Maybe cut down on boilerplate with @lazyload decorator?
     @property
     def metadata(self):
         """
-        Property that holds the metadata (Data Dictionary) for this project instance.
+        Property that holds the metadata (Data Dictionary) for this project
+        instance.
         """
         if self._metadata is None:
-            self._metadata = dtypes.DataDictionary(self.requester.get_metadata())
+            self._metadata = dtypes.DataDictionary(
+                self.requester.get_metadata()
+            )
         return self._metadata
-    
+
     @metadata.setter
     def metadata(self, value):
         if not isinstance(value, (dtypes.DataDictionary, None)):
@@ -60,18 +64,18 @@ class RedcapProject:
     @property
     def efn(self):
         """
-        exportFieldNames for the REDCap project. 
+        exportFieldNames for the REDCap project.
         Maps (field in REDCap) -> (List[fields in export])
         """
         if self._efn is None:
             self.efn = self.requester.get_export_fieldnames()
         return self._efn
 
-    @efn.setter # TODO: Refactor
+    @efn.setter  # TODO: Refactor
     def efn(self, value: List[Dict]):
         """
         Creates the map of checkboxes to lists of their exportFieldNames.
-        GETS: list of dicts; each dict has original_name, choice_value, export_name
+        GETS: list of dicts; each has original_name, choice_value, export_name
         SETS: dict of original_name -> list[exported]
         """
         mapping = dict()
@@ -102,19 +106,21 @@ class RedcapProject:
         Generic POST wrapper to allow unsupported requests.
         """
         return self.requester.post(**kwargs)
-    
+
     def cbnames(self, cbvar: str):
         """
-        Takes a checkbox variable name and returns all exported field names. For example,
-        let field `some_event` have options {-1, 1, 2, 999}:
+        Takes a checkbox variable name and returns all exported field names.
+        For example, let field `some_event` have options {-1, 1, 2, 999}:
             >>> myproject.cbnames('some_event')
-            ['some_event____1', 'some_event___1', 'some_event___2', 'some_event___999']
+            ['some_event____1', 'some_event___1', 'some_event___2',
+                'some_event___999']
         """
         return self.efn[cbvar]
-        
+
     def any_endorsed(self, record, checkbox) -> bool:
         """
-        Given a `record`, looks to see if any export field for `checkbox` was endorsed.
+        Given a `record`, looks to see if any export field for `checkbox` was
+        endorsed.
         """
         exports = self.cbnames(checkbox)
         for var in exports:
@@ -124,33 +130,38 @@ class RedcapProject:
                 return True
         return False
 
-    def get_records(self, records = None, chunksize: int = 20, **kwargs):
+    def get_records(self, records=None, chunksize: int = 20, **kwargs):
         """
-        Export a set of records from the given project. Optional arguments also include:
+        Export a set of records from `project`. Optional arguments include:
             -forms (replace spaces with _)
             -dateRangeBegin
             -dateRangeEnd
-        For dateRange options, format as YYYY-MM-DD HH:MM:SS. Records retrieved are created
-        OR modified within that range, and time boundaries are exclusive.
+        For dateRange options, format as YYYY-MM-DD HH:MM:SS. Records retrieved
+        are created OR modified within that range, and time boundaries are
+        exclusive.
         """
-        downloader = RecordsDownloader(self.requester, chunksize=chunksize, params=kwargs)
-        
-        # Here: Room for func that does this and/or handles chunking, async setup
+        downloader = RecordsDownloader(
+            self.requester, chunksize=chunksize, params=kwargs
+        )
+
+        # Here: Room for func that does this/handles chunking, async setup
         # return self.post(**payload, **kwargs).json()
 
 
 class RecordsDownloader:
     """
-    Handles the download of record data from REDCap. Primarily called through instances
-    of RedcapProject.
+    Handles the download of record data from REDCap. Primarily called through
+    instances of RedcapProject.
     """
-    def __init__(self, requester, chunksize: int = 20, params: Optional[dict] = None):
+    def __init__(
+        self, requester, chunksize: int = 20, params: Optional[dict] = None
+    ):
         self.requester = requester
         self.chunksize = chunksize
         if params is None:
             params = dict()
         for p, v in params.items():
-            params[p] = requester.sanitize_param(v) # params will be same across POSTs
+            params[p] = requester.sanitize_param(v)  # params same across POSTs
         self.static_payload = {
             "content": "record",
             **params,
