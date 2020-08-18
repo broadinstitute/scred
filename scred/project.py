@@ -83,11 +83,11 @@ class RedcapProject:
             d for d in value
             if d["original_field_name"] != d["export_field_name"]
         ]
-        names = [ d["original_field_name"] for d in differing ]
+        names = [d["original_field_name"] for d in differing]
         names = set(names)
         for nm in names:
-            relevant = [ d for d in differing if d["original_field_name"] == nm ]
-            export_names = [ d["export_field_name"] for d in relevant ]
+            relevant = [d for d in differing if d["original_field_name"] == nm]
+            export_names = [d["export_field_name"] for d in relevant]
             mapping[nm] = export_names
         self._efn = mapping
 
