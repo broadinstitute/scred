@@ -104,6 +104,8 @@ pyparsing==2.4.4
 pyrsistent==0.15.4
 PySnooper==0.0.15
 pytest==4.4.0
+pytest-cov==2.10.1
+pytest-profiling==1.7.0
 python-dateutil==2.8.0
 python-gflags==3.1.2
 pytz==2018.5

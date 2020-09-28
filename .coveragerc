@@ -1,0 +1,14 @@
+[run]
+branch = True
+include =
+    cli.py
+    neuromex/*.py
+omit =
+    conftest.py
+    tests/*
+
+[report]
+ignore_errors = False
+
+[html]
+directory = htmlcov
