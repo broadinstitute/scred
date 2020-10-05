@@ -72,10 +72,7 @@ def mock_url(mock_config):
 def mock_project(stored_DataDictionary_object):
     faketoken = "ABCD9999DDDDXXZZ067JTP01Y44MSPD1"
     fakeurl = "https://redcap.botulism.org/api/"
-    rp = scred.RedcapProject(
-        token=faketoken,
-        url=fakeurl,
-    )
+    rp = scred.RedcapProject(token=faketoken, url=fakeurl)
     rp.metadata = stored_DataDictionary_object
     return rp
 
@@ -86,7 +83,4 @@ def mock_ids_clean():
     prefixes = ["ABC", "DEF", "GHJ", "KMN"]
     pref = random.choices(prefixes, k=100)
     nums = [random.randint(10000000, 99999999) for _ in range(0, 100)]
-    return [
-        z[0] + str(z[1])
-        for z in zip(pref, nums)
-    ]
+    return [z[0] + str(z[1]) for z in zip(pref, nums)]

@@ -44,7 +44,7 @@ class Record(pd.DataFrame):
         redcap_fields, responses = data.keys(), data.values()
         idx = pd.Index(redcap_fields, name="field_name")
         response_series = pd.Series(
-            index=idx, data=list(responses), name="response",
+            index=idx, data=list(responses), name="response"
         )
         super().__init__(index=idx, data=response_series)
         self._id = data[primary_key]
@@ -267,7 +267,7 @@ class DataDictionary(pd.DataFrame):
         if isinstance(data, pd.DataFrame):
             super().__init__(data)
         else:
-            idx = pd.Index([d["field_name"] for d in data], name="field_name",)
+            idx = pd.Index([d["field_name"] for d in data], name="field_name")
             super().__init__(data, index=idx)
         self._blogic_fmt = blogic_fmt
 

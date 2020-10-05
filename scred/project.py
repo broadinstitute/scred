@@ -23,13 +23,12 @@ class RedcapProject:
     Main class for top-level interaction. Requires a token and url to create
     requester.
     """
+
     def __init__(self, url, token, metadata=None, requester_kwargs=None):
         if requester_kwargs is None:
             requester_kwargs = dict()
         self.requester = webapi.RedcapRequester(
-            token=token,
-            url=url,
-            **requester_kwargs,
+            token=token, url=url, **requester_kwargs
         )
         self._metadata = None
         self._version = None
@@ -80,7 +79,8 @@ class RedcapProject:
         """
         mapping = dict()
         differing = [
-            d for d in value
+            d
+            for d in value
             if d["original_field_name"] != d["export_field_name"]
         ]
         names = [d["original_field_name"] for d in differing]
@@ -153,6 +153,7 @@ class RecordsDownloader:
     Handles the download of record data from REDCap. Primarily called through
     instances of RedcapProject.
     """
+
     def __init__(
         self, requester, chunksize: int = 20, params: Optional[dict] = None
     ):
@@ -162,20 +163,17 @@ class RecordsDownloader:
             params = dict()
         for p, v in params.items():
             params[p] = requester.sanitize_param(v)  # params same across POSTs
-        self.static_payload = {
-            "content": "record",
-            **params,
-        }
+        self.static_payload = {"content": "record", **params}
 
     def _iter_records(self, records):
         """
         Iterate over the collection of IDs `records`, yielding blocks of len `chunksize`
         until iterator is exhausted. 
         """
-        chunk = deepcopy(records) # avoid mutating passed arg
+        chunk = deepcopy(records)  # avoid mutating passed arg
         while len(chunk) >= self.chunksize:
-            yield chunk[:self.chunksize]
-            del chunk[:self.chunksize]
+            yield chunk[: self.chunksize]
+            del chunk[: self.chunksize]
         yield chunk
 
     def fetch_records(self, chunk):
@@ -186,10 +184,12 @@ class RecordsDownloader:
         to_retry = list()
         for chunk in self._iter_records(records):
             try:
-                yield self.requester.post(self.static_payload, records=chunk).json()
+                yield self.requester.post(
+                    self.static_payload, records=chunk
+                ).json()
             except requests.HTTPError as ex:
                 print(f"[DEV] TODO: Retry this request!\nError: {ex}")
-                to_retry.append(chunk) # worry about this after the rest works
+                to_retry.append(chunk)  # worry about this after the rest works
                 # it.chain(iterator, chunk) (?)
         # TODO not done just brainstorming
 
@@ -200,9 +200,15 @@ class RecordsDownloader:
         # 2 lines until there are tests in place!
         # TEST: What if I pass records= as a param also? Which one wins?
 
-test_params = {"fields": ["field1", "field2", "NonExistentField"], "fakeparam": 25}
+
+test_params = {
+    "fields": ["field1", "field2", "NonExistentField"],
+    "fakeparam": 25,
+}
 test_records = ["ABC123", "ABC456", "NonExistentRecord"]
 syncer = RecordsDownloader(requester, chunksize=20, test_params)
+
+
 def mock_sync():
     for content in syncer.fetch_records(test_records):
         instances = dtypes.RecordSet(content, primary_key="subj_id")

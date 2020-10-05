@@ -32,10 +32,7 @@ class RedcapRequester(LogMixin):
 
         def payloader(**kwargs):
             """Constructs the payload for a request."""
-            payload = {
-                "token": token,
-                "format": default_format,
-            }
+            payload = {"token": token, "format": default_format}
             payload.update(kwargs)
             return payload
 
