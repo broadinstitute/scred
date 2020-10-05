@@ -35,9 +35,9 @@ class Record(pd.DataFrame):
 
     def __init__(self, primary_key: str, data: Optional[Dict] = None):
         """
-        REDCap API will return a list of dicts; each dict is one record. We
-        create a record from a response dict and can handle bulk pulls with
-        loops/RecordSet.
+        REDCap API will return a list of dicts; each dict is one record.
+        We create a record from a response dict and can handle bulk
+        pulls with loops/RecordSet.
         """
         if data is None:
             data = dict()
@@ -75,7 +75,7 @@ class Record(pd.DataFrame):
 
     def add_branching_logic(self, datadict):
         """
-        Draws from metadata object to add branching logic to this record.
+        Draws from metadata object to add branching logic to record.
         Do I want a new class called LogicFiller that operates on
         records? Seems like half of this class is just logic-filling.
         Maybe mixin with Parser? Or LogicFiller has/makes a Parser?
@@ -92,11 +92,12 @@ class Record(pd.DataFrame):
             try:
                 base_logic = datadict.loc[base_field, "branching_logic"]
                 self.loc[varname, "branching_logic"] = base_logic
-            # Keep blank for overflow variables like `{instrument}_complete`
+            # Keep blank for overflow variables
+            # like `{instrument}_complete`
             except KeyError:
                 self.loc[varname, "branching_logic"] = ""
                 if not varname.endswith("_complete"):
-                    # "_complete" fields not expected to exist in datadict
+                    # "_complete" fields not expected in datadict
                     warnings.warn(
                         f"Cannot find {varname} in record and/or datadict"
                     )
@@ -111,20 +112,23 @@ class Record(pd.DataFrame):
         if self.nafilled is True:
             return
         self.require_column("branching_logic", flexible=False)
-        checkboxes = metadata.checkboxes
+        # checkboxes = metadata.checkboxes
         parser = backfillna.Parser(self)
         parser.parse_all_logic()
-        namask = (parser.data["response"] == "") & (
-            parser.data["LOGIC_MET"] == False
-        )  # bitmask means we need ==, not 'is'
+        namask = (
+            (parser.data["response"] == "")
+            # bitmask means we need ==, not 'is'
+            & (parser.data["LOGIC_MET"] == False)
+        )
         cbna = (
             (parser.data["response"].isin([0, "0"]))
+            # bitmask means we need ==, not 'is'
             & (parser.data["LOGIC_MET"] == False)
             & (parser.data.index.str.contains("___"))
         )
         parser.data.loc[namask, "response"] = Record.NACODE
         parser.data.loc[cbna, "response"] = Record.NACODE
-        # Transfer filled responses to this object and set tracking attribute
+        # Transfer filled responses to object and set tracking attribute
         self.loc[:, "response"] = parser.data.loc[:, "response"]
         self.nafilled = True
 
@@ -152,9 +156,9 @@ class Record(pd.DataFrame):
 
     def rcvalue(self, field):
         """
-        Used to more easily access numeric data in the `response` column. Only
-        needs a field name; automatically gets response and attempts to make it
-        numeric.
+        Used to more easily access numeric data in the `response`
+        column. Only needs a field name; automatically gets response
+        and attempts to make it numeric.
         """
         try:
             value = self.loc[field, "response"]
@@ -170,8 +174,8 @@ class Record(pd.DataFrame):
 
     def alter_value(self, field, new_value):
         """
-        Used to change a stored value using underlying DataFrame's `.loc`
-        method. Abstracts away column names.
+        Used to change a stored value using underlying DataFrame's
+        `.loc` method. Abstracts away column names.
         """
         try:
             self.loc[field, "response"]
@@ -182,20 +186,21 @@ class Record(pd.DataFrame):
 
 class RecordSet(dict):
     """
-    Maps a record's ID to its object to simplify lookups. Provides a convenient
-    interface for operating on multiple records as a unit.
+    Maps a record's ID to its object to simplify lookups. Provides a
+    convenient interface for operating on multiple records as a unit.
     """
 
     ID_TEMPLATE = re.compile(r".*")  # default: Everything is permitted
-    # ID_TEMPLATE should probably be in Record. RecordSet should get a method
-    # to change Record's class property, maybe...? Not sure yet.
+    # ID_TEMPLATE should probably be in Record. RecordSet should get a
+    # method to change Record's class property, maybe...? Not sure yet.
 
     def __init__(self, records: Collection[Record], primary_key: str):
         """
-        Take a bulk record data response from the REDCap API and, for each
-        record, instantiate a Record. Use the `primary_key` provided to the
-        RecordSet and pass it to the Record constructor. If the given records
-        are already processed, skip that step and include them directly.
+        Take a bulk record data response from the REDCap API and, for
+        each record, instantiate a Record. Use the `primary_key`
+        provided to the RecordSet and pass it to the Record constructor.
+        If the given records are already processed, skip that step and
+        include them directly.
         """
         for record in records:
             instance = record
@@ -210,10 +215,11 @@ class RecordSet(dict):
 
     def fill_missing(self, metadata: "DataDictionary"):
         """
-        Iterate over records contained in this set. Call fill_missing method on
-        each individual record; these are instances of scred.dtypes.Record, so
-        we know that method exists and expect it to function in isolation. The
-        given data dictionary, `metadata`, is used to look up branching logic.
+        Iterate over records contained in this set. Call fill_missing
+        method on each individual record; these are instances of
+        scred.dtypes.Record, so we know that method exists and expect
+        it to function in isolation. The given data dictionary,
+        `metadata`, is used to look up branching logic.
         """
         for record in self.values():  # TODO: Add tests
             if not (record.bdfilled and record.nafilled):
@@ -222,7 +228,7 @@ class RecordSet(dict):
     def as_dataframe(self):
         df = pd.DataFrame()
         # TODO: Implement! Look into .from_frame()
-        # idx = pd.MultiIndex([ (r.id, r.index) for r in self.values() ])
+        # idx = pd.MultiIndex([(r.id, r.index) for r in self.values()])
         # df = pd.DataFrame(data=self, index=idx)
         return df
 
@@ -232,8 +238,8 @@ class RecordSet(dict):
 
 class DataDictionary(pd.DataFrame):
     """
-    Represents a REDCap Metadata/Data Dictionary object for a given project.
-    At least to start, only creating these from JSON data returned by API.
+    Represents REDCap Metadata/Data Dictionary object for given project.
+    To start, only creating these from JSON data returned by API.
     That is, we work from a list of dicts.
 
     <Column Label: actual_name_in_returned_json>
@@ -242,7 +248,8 @@ class DataDictionary(pd.DataFrame):
         Section Header: section_header
         Field Type: field_type
         Field Label: field_label
-        Choices, Calculations, OR Slider Labels: select_choices_or_calculations
+        Choices, Calculations, OR Slider Labels:
+            select_choices_or_calculations
         Field Note: field_note
         Text Validation Type OR Show Slider Number:
             text_validation_type_or_show_slider_number
@@ -260,9 +267,10 @@ class DataDictionary(pd.DataFrame):
 
     def __init__(self, data, blogic_fmt="redcap"):
         """
-        Index on field names with other metadata as columns. .blogic_fmt
-        represents the current branching logic format. When working from API
-        response, this is always going to start off as REDCap-formatted.
+        Index on field names with other metadata as columns.
+        .blogic_fmt represents the current branching logic format.
+        When working from API response, this is always going to start
+        off as REDCap-formatted.
         """
         if isinstance(data, pd.DataFrame):
             super().__init__(data)
@@ -293,8 +301,8 @@ class DataDictionary(pd.DataFrame):
     @staticmethod
     def _logic_statement_to_python(blogic):
         """
-        Handles all REDCap fields' logic conversions, going from REDCap syntax
-        to python-interpretable code.
+        Handles all REDCap fields' logic conversions, going from REDCap
+        syntax to python-interpretable code.
         """
         bouncebacks = [None, ""]
         if blogic in bouncebacks:
@@ -307,11 +315,13 @@ class DataDictionary(pd.DataFrame):
     @staticmethod
     def convert_checkbox_names(blogic):
         """
-        Checkbox forms are exported differently in logic than in data; fix by
-        substitution.
-            DO change: 'nonpsych_meds_cat(999) == 1' becomes
+        Checkbox forms are exported differently in logic than in data;
+        fix by substitution.
+            DO change:
+                'nonpsych_meds_cat(999) == 1' becomes
                 'nonpsych_meds_cat___999 == 1'.
-            DON'T change: '(nonpsych_meds == 1 or nonpsych_meds == -777)'
+            DON'T change:
+                '(nonpsych_meds == 1 or nonpsych_meds == -777)'
                 stays as-is.
         """
         pattern = re.compile(
@@ -330,7 +340,8 @@ class DataDictionary(pd.DataFrame):
         if self.blogic_fmt == "python":
             return
         fieldslogic = dict()
-        # TODO: Is it faster to just use .loc instead of JSONifying? Profile.
+        # TODO: Is it faster to just use .loc instead of JSONifying?
+        # Profile.
         for fdict in json.loads(self.to_json(orient="records")):
             rclogic = fdict["branching_logic"]
             pylogic = self._logic_statement_to_python(rclogic)

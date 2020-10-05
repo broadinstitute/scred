@@ -5,29 +5,32 @@ Tools for extracting text entries directly from REDCap.
 """
 
 import pandas as pd
-from requests.exceptions import HTTPError
+
+# from requests.exceptions import HTTPError
 
 # ---------------------------------------------------
 
 
 class Textractor:
     """
-    Takes a scred.RedcapProject instance and pulls values of all text fields.
+    Takes a scred.RedcapProject instance and
+    pulls values of all text fields.
         project: the instance to use for sending requests
-        idfield: the field in that REDCap project to use for labeling records
+        idfield: the field in current project used for labeling records
     """
 
     def __init__(self, project, idfield: str):
         self.project = project
         self.idfield = idfield
         self.bounded = set()
-        # TODO: set Project attrs to None, call API when they're first accessed
+        # TODO: set Project attrs to None,
+        # call API when they're first accessed
 
     @property
     def bounded(self):
         """
-        Text fields that aren't "free" text, but bounded in some way. Unique
-        IDs, numerics, and so on.
+        Text fields that aren't "free" text, but bounded in some way.
+        Unique IDs, numerics, and so on.
         """
         return self._bounded
 

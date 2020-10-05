@@ -1,23 +1,30 @@
 """
 scred/backfillna.py
 
-Given a scred.Record instance, parses REDCap branching logic (given in pythonic form) to determine whether 
-each field prompt was skipped for that record.
+Given a scred.Record instance, parses REDCap branching logic (given in
+pythonic form) to determine whether each field prompt was skipped for
+that record.
 
-There are two reasons values in raw REDCap data can be missing: first, because the question wasn't asked (N/A); 
-and second, because the field response is actually blank. REDCap doesn't currently provide a way to distinguish 
-between the two, but it is useful to know whether a blank value is expected for a variety of reasons. This module 
-uses each field's branching logic to determine whether each field's prompt was presented during collection--that 
-is, if a field's logic is satisfied by the record's other field responses. 
+There are two reasons values in raw REDCap data can be missing: first,
+because the question wasn't asked (N/A); and second, because the field
+response is actually blank. REDCap doesn't currently provide a way to
+distinguish between the two, but it is useful to know whether a blank
+value is expected for a variety of reasons. This module uses each
+field's branching logic to determine whether each field's prompt was
+presented during collection--that is, if a field's logic is satisfied
+by the record's other field responses.
 
-To use this module, pass a pandas.DataFrame (or a subclass, e.g. scred.Record) into the Parser class constructor.
+To use this module, pass a pandas.DataFrame (or a subclass,
+e.g. scred.Record) into the Parser class constructor.
 This dataframe must contain at least these 2 columns:
     'response': the response provided in REDCap for each field
     'branching_logic': pythonic branching logic (see documentation)
 
-Calling parser.parse() will set the attribute parser.data to a copy of the initial DataFrame; but with a new column,
-`LOGIC_MET`, that is only True if the branching logic was satisfied by the record data. This column can be used to
-separate the two types of missing values, as implemented in the Record class (see scred/dtypes.py).
+Calling parser.parse() will set the attribute parser.data to a copy of
+the initial DataFrame; but with a new column, `LOGIC_MET`, that is only
+True if the branching logic was satisfied by the record data. This
+column can be used to separate the two types of missing values, as
+implemented in the Record class (see scred/dtypes.py).
 """
 
 import warnings
@@ -26,7 +33,8 @@ import pyparsing as pp
 
 # ---------------------------------------------------
 
-global key, operation, value, cond, joint, cond_chain, cond_chain_with_parentheses, logic
+global key, operation, value, cond, joint
+global cond_chain, cond_chain_with_parentheses, logic
 
 # Define elements of parser grammar
 key = pp.Word(pp.alphanums + "_")(
@@ -57,12 +65,14 @@ logic = cond_chain_with_parentheses + pp.StringEnd()  # The full grammar
 # ---------------------------------------------------
 # Set up parse actions.
 
+
 # Value: convert to numeric
 def list_to_ints(list_of_nums):
     """
-    Receives a list of nums because <fill in more when I review pyparsing again>
+    Receives a list of nums because <fill in after reviewing pyparsing>
     """
-    # It's ok that this casts to int--RC branching logic doesn't support floats
+    # It's ok that this casts to int--RC branching logic
+    # doesn't support floats
     return [int(k) for k in list_of_nums]
 
 
@@ -71,7 +81,10 @@ value.setParseAction(list_to_ints)
 
 # Condition: access values & check logic
 def check_condition(parsed):
-    "Takes in parser result, looks up key(s), and returns bool result of statement."
+    """
+    Takes in parser result, looks up key(s),
+    and returns bool result of statement.
+    """
     parsed = parsed[0]  # Only has one result
     # Field names have been replaced with their responses by this point
     condition_pieces = " ".join([str(x) for x in parsed])
@@ -86,9 +99,10 @@ cond.setParseAction(check_condition)
 
 def fullparse(expression):
     """
-    Takes in an expression and parses it using the full branching logic. This
-    attempts to split the string into tokens, put the tokens back together
-    in a string with responses instead of field names, and evaluate that string.
+    Takes in an expression and parses it using the full branching logic.
+    This attempts to split the string into tokens, put the tokens back
+    together in a string with responses instead of field names, and
+    evaluate that string.
     """
     global logic
     try:
@@ -98,7 +112,8 @@ def fullparse(expression):
     except KeyError:
         # If condition exists but can't be parsed, assume not met
         print(
-            "WARNING! KeyError during Parser.fullparse(), may falsely code as N/A."
+            "WARNING! KeyError during Parser.fullparse(),"
+            "may falsely code as N/A."
         )
         return False
     except pp.ParseException:
@@ -111,7 +126,8 @@ def fullparse(expression):
 
 class Parser:
     def __init__(self, data):
-        global key, operation, value, cond, joint, cond_chain, cond_chain_with_parentheses, logic
+        global key, operation, value, cond, joint
+        global cond_chain, cond_chain_with_parentheses, logic
         self.data = data
         self.data["LOGIC_MET"] = ""  # Add empty column for logic result
         # Complete parser setup by pointing action at this instance
@@ -132,20 +148,24 @@ class Parser:
 
     def val_from_key(self, key, data=None):
         """
-        Helper function that takes a key, looks that key up in the instance record, then returns its value.
-        Not sure how this works with use_key and giving a list and all that, but it does. Should revisit.
+        Helper function that takes a key, looks that key up in the
+        instance record, then returns its value. Not sure how this
+        works with use_key and giving a list and all that, but it does.
+        Should revisit.
         """
-        if data == None:
+        if data is None:
             data = self.data
         try:
             return data.loc[key, "response"]
-        # Thrown if dataframe does not contain key (IndexError because of 0th entry in `use_key`)
+        # Thrown if dataframe does not contain key
+        # (IndexError because of 0th entry in `use_key`)
         except IndexError:
             return None
 
     def parse_all_logic(self):
         """
-        Fill `LOGIC_MET` column for each field in the record, based on other responses in the record.
+        Fill `LOGIC_MET` column for each field in the record, based on
+        other responses in the record.
         """
         temp_df = self.data.copy()  # Unsafe to alter original during loop
         for idx, row in self.data.iterrows():
