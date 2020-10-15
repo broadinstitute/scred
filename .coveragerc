@@ -1,0 +1,14 @@
+[run]
+branch = True
+include =
+    scred/*.py
+omit =
+    conftest.py
+    setup.py
+    tests/*
+
+[report]
+ignore_errors = False
+
+[html]
+directory = htmlcov

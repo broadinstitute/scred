@@ -6,17 +6,16 @@ Adds ../scred/ to $PATH and imports modules for testing
 
 import os
 import sys
+
 sys.path.insert(
-    0, os.path.abspath(
-        os.path.join(os.path.dirname(__file__), '..')
-    )
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 )
 
 # Bring in subpackages. Not sure why, but `import scred` here and
 # `from context import scred.dtypes` in test_*.py throws ModuleNotFound error
 # import scred.dtypes as dtypes
 # import scred.project as project
-# `from scred import *` also no good 
+# `from scred import *` also no good
 # from scred import *
 
 # ---------------------------------------------------

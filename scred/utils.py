@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 
 def is_url(url):
-    # Found on StackOverflow, will fail some edge cases but generally useful
+    # Found on StackOverflow, fails some edge cases but generally useful
     try:
         result = urlparse(url)
         return all([result.scheme, result.netloc])

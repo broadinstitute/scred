@@ -71,9 +71,7 @@ def get_stored_neurogap_exportFieldNames_response():
 
 class TestDataResponses:
     def __init__(self):
-        self.resps = {
-            "record": get_stored_neurogap_record_response(),
-        }
+        self.resps = {"record": get_stored_neurogap_record_response()}
 
 
 testresponses = TestDataResponses()
