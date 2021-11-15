@@ -1,4 +1,4 @@
-pip==19.2.2
+pip==21.1
 wheel==0.33.1
 pandas==0.24.2
 requests>=2.20.0
