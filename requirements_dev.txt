@@ -1,5 +1,5 @@
 pip==19.2.2
-wheel==0.33.1
+wheel==0.38.1
 pandas==0.24.2
 requests>=2.20.0
 twine==1.13.0
