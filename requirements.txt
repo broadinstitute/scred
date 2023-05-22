@@ -43,7 +43,7 @@ pytest==4.4.0
 python-dateutil==2.8.0
 pytz==2018.9
 readme-renderer==24.0
-requests==2.21.0
+requests==2.31.0
 requests-toolbelt==0.9.1
 -e git+https://github.com/markjbaker/scred.git@edcb4fe98f01b68078fefc022d35e8bda9bbb8ed#egg=scred
 six==1.12.0
